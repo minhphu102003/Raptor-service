@@ -2,6 +2,13 @@
 name = "raptor-service"
 version = "0.1.0"
 
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"
@@ -21,6 +28,9 @@ name = "cz_conventional_commits"
 version = "0.1.0"
 tag_format = "v$version"
 update_changelog_on_bump = true
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
 
 description = "Add your description here"
 readme = "README.md"
@@ -47,5 +57,12 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "faker>=37.5.3",
+    "fastapi>=0.116.1",
+    "httpx>=0.28.1",
+    "polyfactory>=2.22.1",
     "pre-commit>=4.3.0",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
+    "typer>=0.16.0",
 ]

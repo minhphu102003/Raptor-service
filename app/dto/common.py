@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any, List, Optional
 
 from pydantic import BaseModel, Field
@@ -31,30 +33,3 @@ class BuildParams(BaseModel):
     )
     levels_cap: int = 0
     reembed_summary: bool = True
-
-
-class BuildRequest(BaseModel):
-    dataset_id: str
-    tree_id: str | None = None
-    embedding_spec: EmbeddingSpec
-    nodes: List[NodeIn]
-    params: BuildParams
-    mode: str = "sync"
-
-
-class BuildResponse(BaseModel):
-    tree_id: str
-    dataset_id: str
-    stats: dict
-    root_node_id: str
-    vector_index: dict
-
-
-class RetrieveRequest(BaseModel):
-    tree_id: str
-    mode: str = "collapsed"
-    query: str
-    query_embedding: Optional[List[float]] = None
-    top_k: int = 8
-    with_paths: bool = True
-    reranker: Optional[dict] = None

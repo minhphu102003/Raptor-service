@@ -22,8 +22,13 @@ repos:
     rev: 1.8.6
     hooks:
       - id: bandit
+        name: bandit (src)
         args: ["-c", "pyproject.toml"]
-        additional_dependencies: ["bandit[toml]"]
+        files: "^(app|raptor|mcp)/"
+      - id: bandit
+        name: bandit (tests, skip B101,B311)
+        args: ["-c", "pyproject.toml", "-s", "B101,B311"]
+        files: "^tests/"
 
   - repo: https://github.com/commitizen-tools/commitizen
     rev: v4.8.3

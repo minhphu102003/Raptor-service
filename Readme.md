@@ -1,3 +1,60 @@
+# Folder structure
+
+```
+project_root/
+├── app/                     # Interface (FastAPI, routers, DTOs)
+│   ├── __init__.py
+│   ├── main.py              # khởi tạo app, include routers
+│   ├── api/
+│   │   ├── __init__.py
+│   │   └── v1/
+│   │       ├── __init__.py
+│   │       ├── routes_build.py     # POST /v1/trees:build
+│   │       ├── routes_retrieve.py  # POST /v1/retrieve
+│   │       └── routes_answer.py    # POST /v1/answer (tùy chọn)
+│   ├── dto/
+│   │   ├── __init__.py
+│   │   ├── build.py
+│   │   ├── retrieve.py
+│   │   └── answer.py
+│   ├── di.py
+│   └── settings.py
+├── domain/
+│   ├── __init__.py
+│   ├── entities.py
+│   └── errors.py
+├── usecases/
+│   ├── __init__.py
+│   ├── build_tree_uc.py
+│   ├── retrieve_uc.py
+│   └── answer_uc.py
+├── raptor/
+│   ├── __init__.py
+│   └── raptor_core.py
+├── infra/
+│   ├── __init__.py
+│   ├── embeddings/
+│   ├── llm/
+│   ├── vectordb/
+│   └── persistence/
+├── tests/
+│   ├── __init__.py
+│   ├── factories/
+│   │   ├── __init__.py
+│   │   ├── build_factories.py
+│   │   ├── retrieve_factories.py
+│   │   └── answer_factories.py
+│   ├── test_build_api.py
+│   ├── test_retrieve_api.py
+│   └── conftest.py
+├── tools/
+│   ├── __init__.py
+│   └── gen_payloads.py
+├── samples/
+│   └── requests/
+└── pyproject.toml
+```
+
 # RAPTOR Service I/O Spec (v0.1)
 
 > Mục tiêu: Chuẩn hóa **định dạng request/response** cho một **RAPTOR service** độc lập. Service nhận các **chunk** đã được tách (và có thể đã có embedding), xây **cây tóm tắt phân cấp**, và cung cấp **retrieval** ở chế độ _collapsed_ hoặc _tree-traversal_. _Embedding dimension_ là **tham số linh hoạt** (ví dụ 380, 384, 512, 1024, 1536, 1560, 3072…) tùy model người dùng chọn.
