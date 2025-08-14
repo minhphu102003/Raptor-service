@@ -6,12 +6,22 @@ from typing import List
 
 from faker import Faker
 import numpy as np
-from polyfactory import Use
+from polyfactory import PostGenerated, Use
 from polyfactory.factories.pydantic_factory import ModelFactory
 
 from app.dto import BuildParams, BuildRequest, EmbeddingSpec, NodeIn
 
 fake = Faker("en_US")
+
+
+def _pick_model(_, values: dict) -> str:
+    prov = values["provider"]
+
+    return {
+        "openai": "text-embedding-3-small",
+        "cohere": "embed-english-v3.0",
+        "huggingface": "BAAI/bge-small-en-v1.5",
+    }[prov]
 
 
 def l2_normalize(v: np.ndarray) -> np.ndarray:
@@ -28,15 +38,9 @@ def rand_embedding(dim: int, normalized: bool = True) -> List[float]:
 
 class EmbeddingSpecFactory(ModelFactory[EmbeddingSpec]):
     __model__ = EmbeddingSpec
-    provider = Use(lambda: secrets.choice(["openai", "cohere", "huggingface"]))
-    model = Use(
-        lambda: {
-            "openai": "text-embedding-3-small",
-            "cohere": "embed-english-v3.0",
-            "huggingface": "BAAI/bge-small-en-v1.5",
-        }[EmbeddingSpecFactory.provider()]
-    )
-    embedding_dim = Use(lambda: secrets.choice([384, 512, 768, 1024, 1536]))
+    provider = Use(ModelFactory.__random__.choice, ["openai", "cohere", "huggingface"])
+    model = PostGenerated(_pick_model)
+    embedding_dim = Use(ModelFactory.__random__.choice, [384, 512, 768, 1024, 1536])
     space = "cosine"
     normalized = True
 

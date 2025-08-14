@@ -1,0 +1,17 @@
+{
+  "tree_id": "kb.road-thought-about.2025-08-14",
+  "mode": "sNHeLFxfFMkHdksOoUZi",
+  "query": "Employee all trial personal claim cover.",
+  "query_embedding": null,
+  "top_k": 3014,
+  "with_paths": true,
+  "reranker": {
+    "send": "sVsnenPSIgVoPTZqXaRG",
+    "point": "-399230843515103529007598345371358372736970968.062128462641019649083449850244",
+    "blood": "wzvTPiICUdEjDQwBsXSe",
+    "expect": "WWKkbSBYcvMytIHvwJel",
+    "campaign": "kimberlystanley@example.com",
+    "walk": 8357,
+    "who": 4312
+  }
+}
