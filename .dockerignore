@@ -1,0 +1,35 @@
+# VCS
+.git
+.gitignore
+
+# Bytecode & caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+
+# Envs
+.venv/
+venv/
+env/
+
+# Build artifacts
+build/
+dist/
+wheels/
+*.egg-info/
+
+# Logs
+*.log
+
+# Docs & tests (tùy bạn)
+docs/
+site/
+tests/
+
+# Local OS cruft
+.DS_Store
+Thumbs.db

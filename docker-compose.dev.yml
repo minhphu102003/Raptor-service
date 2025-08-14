@@ -1,0 +1,9 @@
+services:
+  api:
+    build: .
+    volumes:
+      - .:/app
+      - ./.git:/app/.git:rw
+    ports: ["8000:8000"]
+    environment:
+      - APP_ENV=dev

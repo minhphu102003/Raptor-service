@@ -1,0 +1,74 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.so
+*.pyd
+*.pyo
+
+# ---- Packaging / Build ----
+.build/
+dist/
+build/
+wheels/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# ---- Testing & Coverage ----
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.cache/
+
+# ---- Typing / Lint caches ----
+.mypy_cache/
+.pytype/
+.pyre/
+.ruff_cache/
+
+# ---- Docs (mkdocs / sphinx) ----
+/site
+docs/_build/
+
+# ---- Envs ----
+.venv/
+venv/
+env/
+ENV/
+.env
+.env.*
+!.env.example
+
+# ---- Logs & data ----
+*.log
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db
+
+# ---- Tools / Project ----
+.ropeproject/
+.spyderproject
+.spyproject
+.idea/
+.vscode/
+*.code-workspace
+
+# uv / version pin
+.python-version
+
+# ---- Node (nếu có frontend) ----
+node_modules/
+*.tsbuildinfo
+
+# ---- OS / Others ----
+*.swp
+*.swo
+
+.env
+
+.env
+.venv/
