@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class VectorCfg(BaseModel):
@@ -15,12 +15,14 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
 
     vector: VectorCfg
-
+    pg_async_dsn: str | None = None
     pg_dsn: str | None = None
 
-    class Config:
-        env_nested_delimiter = "__"
-        env_file = ".env"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_nested_delimiter="__",
+        extra="ignore",
+    )
 
 
 settings = Settings()
