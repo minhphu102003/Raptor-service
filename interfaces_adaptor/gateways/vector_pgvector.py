@@ -13,8 +13,8 @@ class PgVectorIndex:
         with psycopg.connect(self.conn_str) as conn, conn.cursor() as cur:
             for _id, vec, m in zip(ids, vectors, meta):
                 cur.execute(
-                    "insert into vectors(id, ns, v, meta) values (%s,%s,%s,%s) "
-                    "on conflict(id) do update set v=EXCLUDED.v, meta=EXCLUDED.meta",
+                    "INSERT INTO vectors(id,ns,v,meta) VALUES (%s,%s,%s,%s) "
+                    "ON CONFLICT(id) DO UPDATE SET v=EXCLUDED.v, meta=EXCLUDED.meta",
                     (_id, self.namespace, vec, m),
                 )
             conn.commit()
