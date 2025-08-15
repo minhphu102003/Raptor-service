@@ -1,84 +1,73 @@
-from sqlalchemy import insert
+from typing import Optional
 
-from entities.document import Chunk, Document
+from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.orm import selectinload
+
 from infra.db.models import ChunkORM, DocumentORM
-from infra.db.session import SessionLocal
+from interfaces_adaptor.ports import IDocumentRepository, IUnitOfWork
 
 
-class DocumentRepoPg:
-    def __init__(self, session_factory=SessionLocal):
-        self._Session = session_factory
+class DocumentRepoPg(IDocumentRepository):
+    def __init__(self, uow: IUnitOfWork):
+        self.uow = uow
 
-    def save_document(self, doc: Document) -> None:
-        with self._Session() as s:
-            try:
-                s.merge(
-                    DocumentORM(
-                        doc_id=doc.doc_id,
-                        dataset_id=doc.dataset_id,
-                        source=doc.source,
-                        tags=doc.tags,
-                        extra_meta=doc.extra_meta,
-                    )
-                )
-                if doc.chunks:
-                    for c in doc.chunks:
-                        s.merge(
-                            ChunkORM(
-                                id=c.id,
-                                doc_id=c.doc_id,
-                                idx=c.idx,
-                                text=c.text,
-                                token_cnt=c.token_cnt,
-                                meta=c.meta,
-                            )
-                        )
-                s.commit()
-            except Exception:
-                s.rollback()
-                raise
+    async def save_document(self, doc: dict) -> None:
+        s = self.uow.session
 
-    def get_document(self, doc_id: str) -> Document | None:
-        with self._Session() as s:
-            o = s.get(DocumentORM, doc_id)
-            if not o:
-                return None
-            chunks = [
-                Chunk(
-                    id=c.id,
-                    doc_id=c.doc_id,
-                    idx=c.idx,
-                    text=c.text,
-                    token_cnt=c.token_cnt,
-                    meta=c.meta,
-                )
+        s.add(DocumentORM(**doc))
+
+    async def get_document(self, doc_id: str) -> Optional[dict]:
+        s = self.uow.session
+        stmt = (
+            select(DocumentORM)
+            .options(selectinload(DocumentORM.chunks))
+            .where(DocumentORM.doc_id == doc_id)
+        )
+        res = await s.execute(stmt)
+        o = res.scalars().first()
+        if not o:
+            return None
+        return {
+            "doc_id": o.doc_id,
+            "dataset_id": o.dataset_id,
+            "source": o.source,
+            "tags": o.tags,
+            "extra_meta": o.extra_meta,
+            "chunks": [
+                {
+                    "id": c.id,
+                    "doc_id": c.doc_id,
+                    "idx": c.idx,
+                    "text": c.text,
+                    "token_cnt": c.token_cnt,
+                    "meta": c.meta,
+                }
                 for c in o.chunks
-            ]
-            return Document(
-                doc_id=o.doc_id,
-                dataset_id=o.dataset_id,
-                source=o.source,
-                tags=o.tags,
-                extra_meta=o.extra_meta,
-                chunks=chunks,
-            )
+            ],
+        }
 
-    def save_chunks_core(self, chunks: list[dict]) -> None:
-        with self._Session() as s:
-            try:
-                stmt = insert(ChunkORM).values(chunks)
-                stmt = stmt.on_conflict_do_update(
-                    index_elements=[ChunkORM.id],
-                    set_={
-                        "text": stmt.excluded.text,
-                        "token_cnt": stmt.excluded.token_cnt,
-                        "meta": stmt.excluded.meta,
-                        "idx": stmt.excluded.idx,
-                        "doc_id": stmt.excluded.doc_id,
-                    },
-                )
-                s.execute(stmt)
-                s.commit()
-            except Exception:
-                s.rollback()
-                raise
+    async def find_by_checksum(self, dataset_id: str, checksum: str) -> Optional[DocumentORM]:
+        s = self.uow.session
+        stmt = select(DocumentORM).where(
+            DocumentORM.dataset_id == dataset_id, DocumentORM.checksum == checksum
+        )
+        res = await s.execute(stmt)
+        return res.scalars().first()
+
+    async def save_chunks(self, chunks: list[dict]) -> None:
+        if not chunks:
+            return
+        s = self.uow.session
+        stmt = insert(ChunkORM).values(chunks)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=[ChunkORM.id],
+            set_={
+                "text": stmt.excluded.text,
+                "token_cnt": stmt.excluded.token_cnt,
+                "meta": stmt.excluded.meta,
+                "idx": stmt.excluded.idx,
+                "doc_id": stmt.excluded.doc_id,
+            },
+        )
+        await s.execute(stmt)

@@ -19,13 +19,11 @@ ChunkMethod = Literal[
 
 
 class RaptorConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    use_raptor: bool = False
+    use_raptor: bool = True
 
 
 class ParserConfigNaive(BaseModel):
     chunk_token_num: int = 512
-    model_config = ConfigDict(extra="forbid")
     overlap_tokens: int = Field(default=100, ge=0, le=2000)
     delimiter: str = "\n"
     html4excel: bool = False
@@ -40,7 +38,6 @@ class ParserConfigGeneric(BaseModel):
 
 
 class RagflowStyleEmbedding(BaseModel):
-    model_config = ConfigDict(extra="forbid")
     embedding_model: str
     embedding_dim: Optional[int] = None
     space: Literal["cosine", "ip", "l2"] = "cosine"
