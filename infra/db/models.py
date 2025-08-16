@@ -42,6 +42,7 @@ class DocumentORM(Base):
     tags: Mapped[Optional[Any]] = mapped_column(JSONB)
     extra_meta: Mapped[Optional[dict]] = mapped_column(JSONB)
     checksum: Mapped[Optional[str]] = mapped_column(String)
+    text: Mapped[Optional[str]] = mapped_column(Text)
     created_at: Mapped[Optional[str]] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now()
     )
@@ -74,7 +75,6 @@ class ChunkORM(Base):
     )
 
     __table_args__ = (
-        # Tìm mảnh theo doc nhanh và chống trùng idx trong cùng doc
         Index("ix_chunks_doc_idx", "doc_id", "idx"),
         UniqueConstraint("doc_id", "idx", name="uq_chunks_doc_idx"),
     )

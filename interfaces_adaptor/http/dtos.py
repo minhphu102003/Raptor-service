@@ -1,21 +1,8 @@
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-ChunkMethod = Literal[
-    "naive",
-    "book",
-    "email",
-    "laws",
-    "manual",
-    "one",
-    "paper",
-    "picture",
-    "presentation",
-    "qa",
-    "table",
-    "tag",
-]
+ChunkMethod = Literal["naive", "markdown", "semantic"]
 
 
 class RaptorConfig(BaseModel):
@@ -78,7 +65,6 @@ class RaptorParams(BaseModel):
 class IngestMarkdownPayload(BaseModel):
     dataset_id: str
     doc_id: Optional[str] = None
-    file_url: Optional[HttpUrl] = None
     source: Optional[str] = None
     tags: Optional[List[str]] = None
     extra_meta: Optional[Dict[str, Any]] = None

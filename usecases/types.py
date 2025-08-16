@@ -15,11 +15,11 @@ class PersistDocumentCmd:
     dataset_id: str
     doc_id: str
     file_bytes: Optional[bytes]
-    file_url: Optional[str]
     source: Optional[str]
     tags: Optional[list[str]]
     extra_meta: Optional[dict]
     upsert_mode: str
+    text: Optional[str] = None
 
 
 @dataclass
@@ -28,3 +28,11 @@ class PersistDocumentResult:
     dataset_id: str
     source_uri: str
     checksum: str
+
+
+@dataclass
+class NaiveChunkConfig:
+    chunk_size_tokens: int = 800
+    chunk_overlap_tokens: int = 100
+    max_chunks: Optional[int] = None
+    tokenizer_encoding: str = "cl100k_base"

@@ -6,32 +6,28 @@ from urllib.parse import urlparse
 
 import httpx
 
+from ..ports import IFileSource
 
-class FileSourceHybrid:
+
+class FileSourceHybrid(IFileSource):
     def __init__(self, storage_dir: str = "./data/md"):
         self.storage_dir = Path(storage_dir)
         self.storage_dir.mkdir(parents=True, exist_ok=True)
 
-    async def load_markdown(self, file_bytes: Optional[bytes], file_url: Optional[str]) -> str:
-        data = await self._load_bytes(file_bytes, file_url)
-        return data.decode("utf-8", errors="ignore")
+    async def load_markdown(self, file_bytes: Optional[bytes]) -> str:
+        return file_bytes.decode("utf-8", errors="ignore")
 
-    async def persist_and_checksum(
-        self, file_bytes: Optional[bytes], file_url: Optional[str]
-    ) -> Tuple[str, str]:
-        """
-        - Nếu có file_bytes: dùng trực tiếp.
-        - Nếu có file_url: tải về bytes.
-        - Persist về storage_dir/<sha256>.md (nếu chưa tồn tại).
-        - Trả (source_uri, checksum).
-        """
-        data = await self._load_bytes(file_bytes, file_url)
+    async def persist_and_checksum(self, file_bytes: bytes) -> Tuple[str, str]:
+        if not file_bytes:
+            raise ValueError("file_bytes is required")
 
-        checksum = hashlib.sha256(data).hexdigest()
+        # TODO: replace here upload to s3 in future
+
+        checksum = hashlib.sha256(file_bytes).hexdigest()
         path = self.storage_dir / f"{checksum}.md"
 
         if not path.exists():
-            await asyncio.to_thread(path.write_bytes, data)
+            await asyncio.to_thread(path.write_bytes, file_bytes)
 
         source_uri = path.resolve().as_uri()
         return source_uri, checksum
