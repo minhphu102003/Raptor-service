@@ -68,11 +68,13 @@ async def ingest_markdown(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.errors())
 
     file_bytes = await file.read() if file is not None else None
-    file_url = str(pl.file_url) if (pl and pl.file_url) else None
 
-    if not file_bytes and not file_url:
-        return {"code": 400, "message": "file (multipart) hoặc file_url (payload) là bắt buộc"}
+    if not file_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="File upload là bắt buộc"
+        )
 
+    file_text = file_bytes.decode("utf-8", errors="ignore")
     doc_id = pl.doc_id if (pl and pl.doc_id) else gen_doc_id()
     dataset_id = resolve_dataset_id(pl, x_dataset_id)
 
@@ -86,18 +88,18 @@ async def ingest_markdown(
         dataset_id=dataset_id,
         doc_id=doc_id,
         file_bytes=file_bytes,
-        file_url=(str(pl.file_url) if pl and pl.file_url else None),
         source=(pl.source if pl and pl.source else None),
         tags=(pl.tags if pl else None),
         extra_meta=(pl.extra_meta if pl else None),
         upsert_mode=(pl.upsert_mode if pl else "upsert"),
+        text=file_text,
     )
 
     res = await uc.execute(cmd)
 
     if not pl or (pl and not pl.auto_embed):
         return {
-            "code": 0,
+            "code": 200,
             "message": "Persisted",
             "data": {
                 "doc_id": res.doc_id,
@@ -164,4 +166,4 @@ async def ingest_markdown(
     # )
 
     # return {"code": 0, "message": "", "data": result.__dict__}
-    return {"code": 0, "message": "", "data": res}
+    return {"code": 200, "message": "", "data": res}

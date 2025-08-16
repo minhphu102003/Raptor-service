@@ -12,9 +12,10 @@ class PersistDocumentUseCase:
         self.uow = uow
 
     async def execute(self, cmd: PersistDocumentCmd) -> PersistDocumentResult:
-        source_uri, checksum = await self.file_source.persist_and_checksum(
-            cmd.file_bytes, cmd.file_url
-        )
+        if not cmd.file_bytes:
+            raise ValueError("file_bytes is required")
+
+        source_uri, checksum = await self.file_source.persist_and_checksum(cmd.file_bytes)
 
         async with self.uow:
             if cmd.upsert_mode == "skip_duplicates":
@@ -32,6 +33,7 @@ class PersistDocumentUseCase:
                     "tags": cmd.tags,
                     "extra_meta": cmd.extra_meta,
                     "checksum": checksum,
+                    "text": cmd.text,
                 }
             )
             return PersistDocumentResult(
