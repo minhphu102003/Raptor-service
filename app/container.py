@@ -27,3 +27,26 @@ class Container:
             dim=dim,
             metric=self.vector_cfg.metric,
         )
+
+    def make_chunker(self, method, config) -> IChunker:
+        from infra.chunking import make_chunker
+
+        return make_chunker(method, config)
+
+    def make_embedding_client(self, byok=None):
+        api_key = getattr(byok, "voyage_api_key", None) if byok else None
+        api_key = api_key or os.getenv("VOYAGE_API_KEY")
+        return VoyageEmbeddingClientAsync(api_key=api_key)
+
+    def make_raptor_builder(self, params):
+        from raptor.raptor_core import RaptorBuilder
+
+        return RaptorBuilder(params)
+
+    def make_deduper(self, cfg):
+        from infra.dedupe import make_deduper
+
+        return make_deduper(cfg)
+
+    def make_ingest_and_index_uc(self, **deps):
+        return IngestAndIndexUseCase(**deps)

@@ -5,19 +5,7 @@ project_root/
 ├── app/                     # Interface (FastAPI, routers, DTOs)
 │   ├── __init__.py
 │   ├── main.py              # khởi tạo app, include routers
-│   ├── api/
-│   │   ├── __init__.py
-│   │   └── v1/
-│   │       ├── __init__.py
-│   │       ├── routes_build.py     # POST /v1/trees:build
-│   │       ├── routes_retrieve.py  # POST /v1/retrieve
-│   │       └── routes_answer.py    # POST /v1/answer (tùy chọn)
-│   ├── dto/
-│   │   ├── __init__.py
-│   │   ├── build.py
-│   │   ├── retrieve.py
-│   │   └── answer.py
-│   ├── di.py
+│   ├── container.py (DI)
 │   └── settings.py
 ├── domain/
 │   ├── __init__.py
@@ -35,8 +23,14 @@ project_root/
 │   ├── __init__.py
 │   ├── embeddings/
 │   ├── llm/
-│   ├── vectordb/
-│   └── persistence/
+│   ├── uow/
+│   └── db/
+├── interface_adaptor/
+│   ├── client
+│   ├── gateways/
+│   ├── http/
+│   ├── repository/
+│   └── port.py
 ├── tests/
 │   ├── __init__.py
 │   ├── factories/

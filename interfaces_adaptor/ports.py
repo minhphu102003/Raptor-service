@@ -1,4 +1,49 @@
-from typing import Any, Optional, Protocol, Sequence, Type
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Protocol, Sequence, Type
+
+
+@dataclass
+class Chunk:
+    id: str
+    order: int
+    text: str
+    meta: Dict[str, Any]
+
+
+class IChunker(Protocol):
+    def chunk(self, full_text: str) -> List[Chunk]: ...
+
+
+class IEmbeddingClient(Protocol):
+    async def embed_documents(
+        self,
+        texts: List[str],
+        model: str,
+        input_type: str,
+        output_dimension: Optional[int],
+        output_dtype: Optional[str],
+    ) -> List[List[float]]: ...
+    async def embed_contextualized(
+        self,
+        chunks: List[str],
+        model: str,
+        output_dimension: Optional[int],
+        output_dtype: Optional[str],
+    ) -> List[List[float]]: ...
+
+
+class IVectorIndex(Protocol):
+    async def upsert(
+        self, items: List[Dict[str, Any]], namespace: str, upsert_mode: str = "upsert"
+    ) -> Dict[str, Any]: ...
+
+
+class IRaptorBuilder(Protocol):
+    async def build(self, chunks: List[Chunk]) -> str: ...
+
+
+class IDeduper(Protocol):
+    def filter(self, chunks: List[Chunk]) -> List[Chunk]: ...
 
 
 class IEmbedder(Protocol):
