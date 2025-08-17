@@ -3,7 +3,6 @@ import os
 from fastapi import (
     APIRouter,
     Depends,
-    File,
     Form,
     Header,
     HTTPException,
@@ -14,8 +13,6 @@ from fastapi import (
 from pydantic import ValidationError
 import ulid
 
-from interfaces_adaptor.http.factories import make_embedder
-from usecases.ingest_markdown import IngestMarkdownUseCase
 from usecases.persist_document import PersistDocumentCmd, PersistDocumentUseCase
 
 from .dependencies.files import require_markdown_file
@@ -57,6 +54,7 @@ async def ingest_markdown(
     x_hf_token: str | None = Header(default=None, alias="X-HF-Token"),
     x_dashscope_api_key: str | None = Header(default=None, alias="X-Dashscope-Api-Key"),
     x_gemini_api_key: str | None = Header(default=None, alias="X-Gemini-Api-Key"),
+    x_voyage_api_key: str | None = Header(default=None, alias="X-Voyage-Api-Key"),
 ):
     container = request.app.state.container
 
@@ -110,60 +108,50 @@ async def ingest_markdown(
             },
         }
 
-    # hdr_byok = {
-    #     "openai_api_key": x_openai_api_key,
-    #     "azure_openai": (
-    #         {
-    #             "endpoint": x_azure_openai_endpoint,
-    #             "api_key": x_azure_openai_api_key,
-    #             "deployment": x_azure_openai_deployment,
-    #         }
-    #         if x_azure_openai_api_key or x_azure_openai_endpoint
-    #         else None
-    #     ),
-    #     "cohere_api_key": x_cohere_api_key,
-    #     "huggingface_token": x_hf_token,
-    #     "dashscope_api_key": x_dashscope_api_key,
-    #     "gemini_api_key": x_gemini_api_key,
-    # }
-    # hdr_byok = {k: v for k, v in hdr_byok.items() if v}
+    if pl.byok is None:
+        pl.byok = BYOK()
+    if x_voyage_api_key:
+        object.__setattr__(pl.byok, "voyage_api_key", x_voyage_api_key)
 
-    # byok = hdr_byok or (pl.byok.model_dump() if pl.byok else None)
+    chunker = container.make_chunker(method=pl.chunk_method, config=pl.parser_config)
+    embed_client = container.make_embedding_client(pl.byok)
+    dim = pl.target_dim() or (1024 if getattr(pl, "use_contextualized_chunks", True) else 1024)
+    index = container.make_vector_index(dim=dim)
+    raptor_builder = container.make_raptor_builder(pl.raptor_params) if pl.build_tree else None
+    deduper = container.make_deduper(pl.dedupe) if pl.dedupe else None
 
-    # embedder = make_embedder(
-    #     embedding_model=pl.embedding.embedding_model,
-    #     space=pl.embedding.space,
-    #     normalized=pl.embedding.normalized,
-    #     byok=byok,
-    #     target_dim=pl.embedding.embedding_dim,
-    # )
+    ingest_uc = container.make_ingest_and_index_uc(
+        chunker=chunker,
+        embed_client=embed_client,
+        vector_index=index,
+        raptor_builder=raptor_builder,
+        deduper=deduper,
+        batch_size=pl.batch_size,
+    )
 
-    # dim = pl.embedding.embedding_dim or getattr(embedder, "dim", None)
-    # if not dim:
-    #     return {"code": 400, "message": "Cannot determine embedding_dim"}
-    # index = container.make_vector_index(dim=dim)
+    result = await ingest_uc.execute(
+        IngestAndIndexCmd(
+            dataset_id=dataset_id,
+            doc_id=doc_id,
+            full_text=file_text,
+            embedding_cfg=pl.embedding,
+            use_cce=getattr(pl, "use_contextualized_chunks", True),  # BẬT CCE
+            build_tree=pl.build_tree,
+            upsert_mode=pl.upsert_mode,
+        )
+    )
 
-    # usecase = IngestMarkdownUseCase(
-    #     file_source=container.file_source,
-    #     embedder=embedder,
-    #     index=index,
-    #     doc_repo=container.doc_repo,
-    #     queue=None,
-    #     summarizer=None,
-    # )
-
-    # if pl.mode == "async" and (
-    #     pl.build_tree
-    #     or (getattr(pl.parser_config, "raptor", None) and pl.parser_config.raptor.use_raptor)
-    # ):
-    #     job_id = "job_..."
-    #     # TODO: container.queue.enqueue(...)
-    #     return {"code": 0, "message": "Accepted", "data": {"job_id": job_id}}, 202
-
-    # file_bytes = await file.read() if file is not None else None
-    # result = await usecase.execute(
-    #     file_bytes=file_bytes, file_url=str(pl.file_url) if pl.file_url else None, payload=pl
-    # )
-
-    # return {"code": 0, "message": "", "data": result.__dict__}
-    return {"code": 200, "message": "", "data": res}
+    return {
+        "code": 200,
+        "message": "Embedded",
+        "data": {
+            "doc_id": doc_id,
+            "dataset_id": dataset_id,
+            "status": "embedded",
+            "chunks": result.chunks,
+            "indexed": result.index_stats,
+            "raptor_tree_id": result.tree_id,
+            "source_uri": res.source_uri,
+            "checksum": res.checksum,
+        },
+    }

@@ -1,3 +1,4 @@
+import os
 from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -52,6 +53,15 @@ class BYOK(BaseModel):
     huggingface_token: Optional[str] = None
     dashscope_api_key: Optional[str] = None
     gemini_api_key: Optional[str] = None
+    voyage_api_key: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _fill_voyage_from_env(self):
+        if self.voyage_api_key is None:
+            env = os.getenv("VOYAGE_API_KEY")
+            if env:
+                object.__setattr__(self, "voyage_api_key", env)
+        return self
 
 
 class RaptorParams(BaseModel):
