@@ -1,4 +1,6 @@
+import asyncio
 import os
+import uuid
 
 from fastapi import (
     APIRouter,
@@ -11,8 +13,8 @@ from fastapi import (
     status,
 )
 from pydantic import ValidationError
-import ulid
 
+from infra.embeddings.voyage_client import VoyageEmbeddingClientAsync
 from usecases.persist_document import PersistDocumentCmd, PersistDocumentUseCase
 
 from .dependencies.files import require_markdown_file
@@ -24,7 +26,7 @@ DEFAULT_DATASET_ID = os.getenv("DEFAULT_DATASET_ID", "default")
 
 
 def gen_doc_id() -> str:
-    return str(ulid.new())
+    return uuid.uuid4().hex
 
 
 def resolve_dataset_id(pl: IngestMarkdownPayload | None, x_dataset_id: str | None) -> str:
@@ -73,13 +75,13 @@ async def ingest_markdown(
         )
 
     file_text = file_bytes.decode("utf-8", errors="ignore")
-    doc_id = pl.doc_id if (pl and pl.doc_id) else gen_doc_id()
+    doc_id = gen_doc_id()
     dataset_id = resolve_dataset_id(pl, x_dataset_id)
 
     uow = container.make_uow()
     doc_repo = container.make_doc_repo(uow)
     file_source = container.file_source
-
+    print("Debug 1 : ******")
     uc = PersistDocumentUseCase(file_source=file_source, doc_repo=doc_repo, uow=uow)
 
     cmd = PersistDocumentCmd(
@@ -92,9 +94,9 @@ async def ingest_markdown(
         upsert_mode=(pl.upsert_mode if pl else "upsert"),
         text=file_text,
     )
-
+    print("Debug 2 : ******")
     res = await uc.execute(cmd)
-
+    print("Debug 3 : ******")
     if not pl or (pl and not pl.auto_embed):
         return {
             "code": 200,
@@ -108,49 +110,51 @@ async def ingest_markdown(
             },
         }
 
-    if pl.byok is None:
-        pl.byok = BYOK()
-    if x_voyage_api_key:
-        object.__setattr__(pl.byok, "voyage_api_key", x_voyage_api_key)
-
-    chunker = container.make_chunker(method=pl.chunk_method, config=pl.parser_config)
-    embed_client = container.make_embedding_client(pl.byok)
-    dim = pl.target_dim() or (1024 if getattr(pl, "use_contextualized_chunks", True) else 1024)
-    index = container.make_vector_index(dim=dim)
-    raptor_builder = container.make_raptor_builder(pl.raptor_params) if pl.build_tree else None
-    deduper = container.make_deduper(pl.dedupe) if pl.dedupe else None
-
-    ingest_uc = container.make_ingest_and_index_uc(
-        chunker=chunker,
-        embed_client=embed_client,
-        vector_index=index,
-        raptor_builder=raptor_builder,
-        deduper=deduper,
-        batch_size=pl.batch_size,
-    )
-
-    result = await ingest_uc.execute(
-        IngestAndIndexCmd(
-            dataset_id=dataset_id,
-            doc_id=doc_id,
-            full_text=file_text,
-            embedding_cfg=pl.embedding,
-            use_cce=getattr(pl, "use_contextualized_chunks", True),  # BẬT CCE
-            build_tree=pl.build_tree,
-            upsert_mode=pl.upsert_mode,
+    if not getattr(pl.byok, "voyage_api_key", None):
+        raise HTTPException(
+            status_code=400, detail="Thiếu X-Voyage-Api-Key khi dùng contextualized_embed."
         )
-    )
+
+    cce = VoyageEmbeddingClientAsync(api_key=pl.byok.voyage_api_key)
+    print("Debug 4 : ******")
+    try:
+        vectors, chunk_texts = await asyncio.wait_for(
+            cce.embed_doc_fulltext(
+                text=file_text,
+                chunk_fn=container.chunk_fn,
+            ),
+            timeout=60,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="Embedding timed out")
+    print("Debug 5 : ******")
+    points = []
+    for i, (vec, txt) in enumerate(zip(vectors, chunk_texts)):
+        points.append(
+            {
+                "id": f"{doc_id}::c{i}",
+                "vector": vec,
+                "metadata": {
+                    "doc_id": doc_id,
+                    "dataset_id": dataset_id,
+                    "chunk_index": i,
+                    "text": txt,
+                    "source_uri": res.source_uri,
+                    **(pl.extra_meta or {}),
+                },
+            }
+        )
 
     return {
         "code": 200,
-        "message": "Embedded",
+        "message": "Embedded (CCE)",
         "data": {
             "doc_id": doc_id,
             "dataset_id": dataset_id,
             "status": "embedded",
-            "chunks": result.chunks,
-            "indexed": result.index_stats,
-            "raptor_tree_id": result.tree_id,
+            "chunks": len(points),
+            "indexed": {"upserted": len(points)},
+            "raptor_tree_id": None,
             "source_uri": res.source_uri,
             "checksum": res.checksum,
         },

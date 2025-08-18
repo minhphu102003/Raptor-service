@@ -80,9 +80,6 @@ class ChunkORM(Base):
     )
 
 
-# ---------- Vectors (pgvector) ----------
-# Nếu bạn cần đa chiều (1536 + 3072), hãy tạo thêm bảng vectors_1536 và
-# chọn bảng theo embedder.dim trong gateway. Ở đây minh hoạ một bảng 3072.
 class Vector3072ORM(Base):
     __tablename__ = "vectors"
 
@@ -91,13 +88,9 @@ class Vector3072ORM(Base):
     v: Mapped[list[float]] = mapped_column(Vector(3072))
     meta: Mapped[Optional[dict]] = mapped_column(JSONB)
 
-    __table_args__ = (
-        Index("ix_vectors_ns", "ns"),
-        # Chỉ mục HNSW/IVF phải tạo thủ công trong migration (op.execute(...))
-    )
+    __table_args__ = (Index("ix_vectors_ns", "ns"),)
 
 
-# ---------- RAPTOR Trees ----------
 class TreeORM(Base):
     __tablename__ = "trees"
 

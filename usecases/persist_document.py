@@ -1,6 +1,21 @@
+from typing import Optional
+
+from sqlalchemy.exc import IntegrityError as SAIntegrityError
+
+try:
+    import asyncpg
+except Exception:
+    asyncpg = None
+
 from interfaces_adaptor.ports import IDocumentRepository, IFileSource, IUnitOfWork
 
 from .types import PersistDocumentCmd, PersistDocumentResult
+
+
+class DuplicateIdError(Exception):
+    def __init__(self, doc_id: str):
+        super().__init__(f"Document with id '{doc_id}' already exists.")
+        self.doc_id = doc_id
 
 
 class PersistDocumentUseCase:
@@ -17,25 +32,29 @@ class PersistDocumentUseCase:
 
         source_uri, checksum = await self.file_source.persist_and_checksum(cmd.file_bytes)
 
-        async with self.uow:
-            if cmd.upsert_mode == "skip_duplicates":
-                existed = await self.doc_repo.find_by_checksum(cmd.dataset_id, checksum)
-                if existed:
-                    return PersistDocumentResult(
-                        existed.doc_id, existed.dataset_id, existed.source, checksum
-                    )
+        # Raise bên trong context để __aexit__ rollback & close phiên
+        try:
+            async with self.uow:
+                await self.doc_repo.save_document(
+                    {
+                        "doc_id": cmd.doc_id,
+                        "dataset_id": cmd.dataset_id,
+                        "source": cmd.source or source_uri,
+                        "tags": cmd.tags,
+                        "extra_meta": cmd.extra_meta,
+                        "checksum": checksum,
+                        "text": cmd.text,
+                    }
+                )
+        except SAIntegrityError as e:
+            # Postgres unique violation: SQLSTATE 23505
+            orig = getattr(e, "orig", None)
+            sqlstate: Optional[str] = getattr(orig, "sqlstate", None)
+            is_unique_violation = sqlstate == "23505" or (
+                asyncpg and isinstance(orig, asyncpg.UniqueViolationError)
+            )
+            if is_unique_violation:
+                raise DuplicateIdError(cmd.doc_id) from e
+            raise  # các lỗi integrity khác: ném tiếp
 
-            await self.doc_repo.save_document(
-                {
-                    "doc_id": cmd.doc_id,
-                    "dataset_id": cmd.dataset_id,
-                    "source": cmd.source or source_uri,
-                    "tags": cmd.tags,
-                    "extra_meta": cmd.extra_meta,
-                    "checksum": checksum,
-                    "text": cmd.text,
-                }
-            )
-            return PersistDocumentResult(
-                cmd.doc_id, cmd.dataset_id, cmd.source or source_uri, checksum
-            )
+        return PersistDocumentResult(cmd.doc_id, cmd.dataset_id, cmd.source or source_uri, checksum)
