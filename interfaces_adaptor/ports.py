@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Protocol, Sequence, Type
+from typing import Any, Callable, Dict, List, Optional, Protocol, Sequence, Type
 
 
 @dataclass
@@ -12,6 +12,10 @@ class Chunk:
 
 class IChunker(Protocol):
     def chunk(self, full_text: str) -> List[Chunk]: ...
+
+
+class ChunkFnProvider(Protocol):
+    def build(self) -> Callable[[str], List[str]]: ...
 
 
 class IEmbeddingClient(Protocol):

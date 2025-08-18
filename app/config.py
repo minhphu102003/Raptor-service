@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -13,6 +15,7 @@ class VectorCfg(BaseModel):
 class Settings(BaseSettings):
     api_prefix: str = ""
     openai_api_key: str | None = None
+    voyageai_key: Optional[str] = None
 
     vector: VectorCfg
     pg_async_dsn: str | None = None
