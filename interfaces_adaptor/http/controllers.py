@@ -15,6 +15,8 @@ from fastapi import (
 from pydantic import ValidationError
 
 from infra.embeddings.voyage_client import VoyageEmbeddingClientAsync
+from services.chunk_service import ChunkService
+from services.embedding_service import EmbeddingService
 from usecases.persist_document import PersistDocumentCmd, PersistDocumentUseCase
 
 from .dependencies.files import require_markdown_file
@@ -81,7 +83,6 @@ async def ingest_markdown(
     uow = container.make_uow()
     doc_repo = container.make_doc_repo(uow)
     file_source = container.file_source
-    print("Debug 1 : ******")
     uc = PersistDocumentUseCase(file_source=file_source, doc_repo=doc_repo, uow=uow)
 
     cmd = PersistDocumentCmd(
@@ -94,9 +95,7 @@ async def ingest_markdown(
         upsert_mode=(pl.upsert_mode if pl else "upsert"),
         text=file_text,
     )
-    print("Debug 2 : ******")
     res = await uc.execute(cmd)
-    print("Debug 3 : ******")
     if not pl or (pl and not pl.auto_embed):
         return {
             "code": 200,
@@ -115,19 +114,26 @@ async def ingest_markdown(
             status_code=400, detail="Thiếu X-Voyage-Api-Key khi dùng contextualized_embed."
         )
 
-    cce = VoyageEmbeddingClientAsync(api_key=pl.byok.voyage_api_key)
-    print("Debug 4 : ******")
-    try:
-        vectors, chunk_texts = await asyncio.wait_for(
-            cce.embed_doc_fulltext(
-                text=file_text,
-                chunk_fn=container.chunk_fn,
-            ),
-            timeout=60,
-        )
-    except asyncio.TimeoutError:
-        raise HTTPException(status_code=504, detail="Embedding timed out")
-    print("Debug 5 : ******")
+    print("api key ", pl.byok.voyage_api_key)
+
+    cce = VoyageEmbeddingClientAsync(
+        api_key=pl.byok.voyage_api_key,
+        model="voyage-context-3",
+        out_dim=1024,
+        out_dtype="float",
+        rpm_limit=3,
+        tpm_limit=10_000,
+        max_retries=3,
+        per_request_token_budget=9_500,
+    )
+    print("DEBUG ***** 1 : ")
+
+    vectors, chunk_texts = await cce.embed_doc_fulltext_rate_limited(
+        text=file_text,
+        chunk_fn=container.chunk_fn,
+    )
+
+    print("DEBUG ***** 5 : ")
     points = []
     for i, (vec, txt) in enumerate(zip(vectors, chunk_texts)):
         points.append(
@@ -144,7 +150,39 @@ async def ingest_markdown(
                 },
             }
         )
+    print("DEBUG ***** 6 : ")
 
+    async with container.make_uow() as chunk_uow:
+        chunk_service = ChunkService(chunk_uow.session)
+        chunk_ids = await chunk_service.store_chunks(
+            doc_id=doc_id,
+            dataset_id=dataset_id,
+            chunk_texts=chunk_texts,
+            source_uri=res.source_uri,
+            extra_meta=pl.extra_meta or {},
+            start_index=0,
+        )
+        await chunk_uow.commit()
+
+    try:
+        async with container.make_uow() as emb_uow:
+            emb_service = EmbeddingService(emb_uow.session, n_dim=1024)
+            await emb_service.store_embeddings(
+                dataset_id=dataset_id,
+                owner_type="chunk",
+                owner_ids=chunk_ids,
+                vectors=vectors,
+                model="voyage-3",
+                dim=1024,
+                extra_meta={"doc_id": doc_id},
+            )
+            await emb_uow.commit()
+        embedded_ok = True
+    except Exception as ex:
+        print(ex)
+        # TODO: write log, trace in here ...
+        embedded_ok = False
+    print("DEBUG ***** 7 : ")
     return {
         "code": 200,
         "message": "Embedded (CCE)",
