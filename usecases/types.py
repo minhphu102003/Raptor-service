@@ -36,3 +36,13 @@ class NaiveChunkConfig:
     chunk_overlap_tokens: int = 100
     max_chunks: Optional[int] = None
     tokenizer_encoding: str = "cl100k_base"
+
+
+@dataclass
+class EmbedAndIndexCmd:
+    doc_id: str
+    dataset_id: str
+    text: str
+    model: str
+    method: str
+    output_dimension: int

@@ -1,67 +1,58 @@
+# interfaces_adaptor/ports.py
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Protocol, Sequence, Type
+from typing import Any, Callable, Dict, Iterable, List, Optional, Protocol, Sequence, Type
+
+
+# ----- DTOs -----
+@dataclass
+class ChunkDTO:
+    chunk_id: str
+    doc_id: str
+    dataset_id: str
+    index: int
+    text: str
+    token_count: int | None = None
+    start_offset: int | None = None
+    end_offset: int | None = None
+    source_uri: str | None = None
+    extra_meta: dict | None = None
 
 
 @dataclass
-class Chunk:
-    id: str
-    order: int
-    text: str
-    meta: Dict[str, Any]
+class EmbeddingDTO:
+    emb_id: str  # ví dụ: f"chunk::{chunk_id}"
+    dataset_id: str
+    owner_type: str  # "chunk" | "tree_node"
+    owner_id: str  # chunk_id / node_id
+    model: str  # "voyage-3" ...
+    dim: int  # 1024
+    vector: List[float]  # len == dim
+    extra_meta: dict | None = None
+
+
+# ----- Low-level providers (tuỳ bạn có dùng) -----
+class IFileSource(Protocol):
+    async def load_markdown(self, file_bytes: Optional[bytes]) -> str: ...
+    async def persist_and_checksum(self, file_bytes: Optional[bytes]) -> tuple[str, str]: ...
+    async def read(self, source_uri: str) -> bytes: ...
 
 
 class IChunker(Protocol):
-    def chunk(self, full_text: str) -> List[Chunk]: ...
-
-
-class ChunkFnProvider(Protocol):
-    def build(self) -> Callable[[str], List[str]]: ...
-
-
-class IEmbeddingClient(Protocol):
-    async def embed_documents(
-        self,
-        texts: List[str],
-        model: str,
-        input_type: str,
-        output_dimension: Optional[int],
-        output_dtype: Optional[str],
-    ) -> List[List[float]]: ...
-    async def embed_contextualized(
-        self,
-        chunks: List[str],
-        model: str,
-        output_dimension: Optional[int],
-        output_dtype: Optional[str],
-    ) -> List[List[float]]: ...
-
-
-class IVectorIndex(Protocol):
-    async def upsert(
-        self, items: List[Dict[str, Any]], namespace: str, upsert_mode: str = "upsert"
-    ) -> Dict[str, Any]: ...
-
-
-class IRaptorBuilder(Protocol):
-    async def build(self, chunks: List[Chunk]) -> str: ...
-
-
-class IDeduper(Protocol):
-    def filter(self, chunks: List[Chunk]) -> List[Chunk]: ...
+    async def split(self, text: str) -> list[ChunkDTO]: ...
 
 
 class IEmbedder(Protocol):
     dim: int
-    space: str
-    normalized: bool
 
     async def embed(self, texts: Sequence[str], *, batch_size: int = 64) -> list[list[float]]: ...
+    async def embed_chunks(
+        self, texts: Sequence[str], *, model: str, output_dimension: int, method: str
+    ) -> list[list[float]]: ...
 
 
-class IChatLLM(Protocol):
-    async def summarize(self, text: str, *, max_tokens: int, temperature: float) -> str: ...
-
-
+# (tuỳ chọn) external vector index (Qdrant/Milvus, …)
 class IVectorIndex(Protocol):
     name: str
     namespace: Optional[str]
@@ -69,29 +60,31 @@ class IVectorIndex(Protocol):
     def upsert(
         self, ids: Sequence[str], vectors: Sequence[Sequence[float]], meta: Sequence[dict[str, Any]]
     ) -> None: ...
+    async def bulk_upsert(
+        self, *, dim: int, model: str, method: str, items: Iterable[tuple[str, list[float]]]
+    ) -> int: ...
 
 
+# ----- Repositories (DB) -----
 class IDocumentRepository(Protocol):
-    def save_document(self, doc: dict) -> None: ...
-    def save_chunks(self, chunks: list[dict]) -> None: ...
+    async def save_document(self, doc: dict) -> None: ...
     async def get_document(self, doc_id: str) -> Optional[Any]: ...
     async def find_by_checksum(self, dataset_id: str, checksum: str) -> Optional[Any]: ...
 
 
+class IChunkRepository(Protocol):
+    async def bulk_upsert(self, chunks: Iterable[ChunkDTO]) -> int: ...
+
+
+class IEmbeddingRepository(Protocol):
+    async def bulk_upsert(self, embs: Iterable[EmbeddingDTO]) -> int: ...
+
+
 class ITreeRepository(Protocol):
-    def save_tree(self, tree: dict) -> str: ...
+    async def save_tree(self, tree: dict) -> str: ...
 
 
-class IQueue(Protocol):
-    def enqueue(self, job_name: str, payload: dict) -> str: ...
-
-
-class IFileSource(Protocol):
-    async def load_markdown(self, file_bytes: Optional[bytes]) -> str: ...
-    async def persist_and_checksum(self, file_bytes: Optional[bytes]) -> tuple[str, str]: ...
-    async def read(self, source_uri: str) -> bytes: ...
-
-
+# ----- UoW -----
 class IUnitOfWork(Protocol):
     async def __aenter__(self) -> "IUnitOfWork": ...
     async def __aexit__(
@@ -100,10 +93,12 @@ class IUnitOfWork(Protocol):
         exc: Optional[BaseException],
         tb: Optional[Any],
     ) -> None: ...
-
     async def begin(self) -> None: ...
     async def commit(self) -> None: ...
     async def rollback(self) -> None: ...
-
     @property
     def session(self) -> Any: ...
+
+
+class ChunkFnProvider(Protocol):
+    def build(self) -> Callable[[str], List[str]]: ...
