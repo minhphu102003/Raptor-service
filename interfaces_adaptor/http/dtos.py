@@ -1,7 +1,6 @@
-import os
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class RaptorConfig(BaseModel):
@@ -49,7 +48,6 @@ class IngestMarkdownPayload(BaseModel):
     build_tree: bool = True
     raptor_params: Optional[RaptorParams] = None
     summary_llm: Optional[SummaryLLM] = None
-    auto_embed: bool = True
     batch_size: int = 64
     vector_index: Optional[Dict[str, Any]] = None
     upsert_mode: Literal["upsert", "replace", "skip_duplicates"] = "upsert"

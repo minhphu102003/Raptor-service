@@ -54,12 +54,10 @@ class VoyageEmbeddingClientAsync:
     ) -> Tuple[List[List[float]], List[str]]:
         chunks = chunk_fn(text) if chunk_fn else [text]
         groups = self._pack_groups_by_tpm(chunks)
-        print("DEBUG ***** 2 : ")
         all_embeddings, all_chunks = [], []
         for group in groups:
             group_tokens = count_tokens_total(group, self.model, self.api_key)
             await self.limiter.acquire(group_tokens)
-            print("DEBUG ***** 3 : ")
             try:
                 resp = await self.vo.contextualized_embed(
                     inputs=[group],
@@ -74,7 +72,6 @@ class VoyageEmbeddingClientAsync:
             r0 = resp.results[0]
             all_embeddings.extend(r0.embeddings)
             all_chunks.extend(group)
-        print("DEBUG ***** 4 : ")
         return all_embeddings, all_chunks
 
     async def embed_queries(self, queries: List[str]) -> List[List[float]]:
