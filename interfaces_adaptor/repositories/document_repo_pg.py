@@ -1,6 +1,6 @@
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import selectinload
 
@@ -71,3 +71,8 @@ class DocumentRepoPg(IDocumentRepository):
             },
         )
         await s.execute(stmt)
+
+    # async def dataset_exists(self, dataset_id: str) -> bool:
+    #     s = self.uow.session
+    #     stmt = select(exists().where(DocumentORM.dataset_id == dataset_id))
+    #     return (await s.execute(stmt)).scalar()
