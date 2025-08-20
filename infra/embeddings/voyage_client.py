@@ -1,10 +1,15 @@
+import logging
+import time
 from typing import Callable, List, Optional, Tuple
 
 import voyageai
 from voyageai.error import APIConnectionError, APIError, RateLimitError
 
+from utils.log import preview
 from utils.packing import count_tokens_total, token_lengths
 from utils.ratelimit import RateLimiter
+
+logger = logging.getLogger("voyage")
 
 
 class VoyageEmbeddingClientAsync:
@@ -18,6 +23,9 @@ class VoyageEmbeddingClientAsync:
         tpm_limit: int = 10_000,
         max_retries: int = 3,
         per_request_token_budget: int = 9_500,
+        *,
+        log_chunks: bool = False,
+        chunk_preview_chars: int = 160,
     ):
         self.api_key = api_key
         self.vo = voyageai.AsyncClient(api_key=api_key, max_retries=max_retries)
@@ -26,6 +34,17 @@ class VoyageEmbeddingClientAsync:
         self.out_dtype = out_dtype
         self.limiter = RateLimiter(rpm=rpm_limit, tpm=tpm_limit)
         self.per_request_token_budget = per_request_token_budget
+        self.log_chunks = log_chunks
+        self.chunk_preview_chars = chunk_preview_chars
+
+        logger.info(
+            "[Voyage] init model=%s out_dim=%s rpm=%s tpm=%s token_budget=%s",
+            model,
+            out_dim,
+            rpm_limit,
+            tpm_limit,
+            per_request_token_budget,
+        )
 
     def _pack_groups_by_tpm(self, chunks: List[str]) -> List[List[str]]:
         lens = token_lengths(chunks, self.model, self.api_key)
@@ -44,6 +63,16 @@ class VoyageEmbeddingClientAsync:
             used += n
         if cur:
             groups.append(cur)
+
+        sizes = list(map(len, groups))
+        tok_each = [count_tokens_total(g, self.model, self.api_key) for g in groups]
+        logger.info(
+            "[Voyage] pack groups: groups=%d sizes=%s tokens=%s (budget=%d)",
+            len(groups),
+            sizes,
+            tok_each,
+            self.per_request_token_budget,
+        )
         return groups
 
     async def embed_doc_fulltext_rate_limited(
@@ -53,11 +82,42 @@ class VoyageEmbeddingClientAsync:
         chunk_fn: Optional[Callable[[str], List[str]]] = None,
     ) -> Tuple[List[List[float]], List[str]]:
         chunks = chunk_fn(text) if chunk_fn else [text]
+        tot_tok = count_tokens_total(chunks, self.model, self.api_key)
+        if self.log_chunks:
+            previews = [preview(c, self.chunk_preview_chars) for c in chunks[:20]]
+            more = "" if len(chunks) <= 20 else f" (+{len(chunks) - 20} more)"
+            logger.info(
+                "[Voyage] chunks n=%d total_tokens=%d previews=%s%s",
+                len(chunks),
+                tot_tok,
+                previews,
+                more,
+            )
+        else:
+            logger.info("[Voyage] chunks n=%d total_tokens=%d", len(chunks), tot_tok)
+
         groups = self._pack_groups_by_tpm(chunks)
+
         all_embeddings, all_chunks = [], []
-        for group in groups:
+        for gi, group in enumerate(groups):
             group_tokens = count_tokens_total(group, self.model, self.api_key)
+
+            t_wait = time.perf_counter()
             await self.limiter.acquire(group_tokens)
+            waited_ms = (time.perf_counter() - t_wait) * 1e3
+
+            logger.info(
+                "[Voyage] G%d acquire ok tokens=%d waited_ms=%.1f", gi, group_tokens, waited_ms
+            )
+            if self.log_chunks:
+                logger.debug(
+                    "[Voyage] G%d first_text='%s' (n=%d)",
+                    gi,
+                    preview(group[0], self.chunk_preview_chars),
+                    len(group),
+                )
+
+            t0 = time.perf_counter()
             try:
                 resp = await self.vo.contextualized_embed(
                     inputs=[group],
@@ -66,15 +126,46 @@ class VoyageEmbeddingClientAsync:
                     output_dimension=self.out_dim,
                     output_dtype=self.out_dtype,
                 )
-            except (RateLimitError, APIConnectionError, APIError):
+            except RateLimitError as e:
+                logger.warning(
+                    "[Voyage] G%d 429 RateLimit tokens=%d waited_ms=%.1f err=%s",
+                    gi,
+                    group_tokens,
+                    waited_ms,
+                    e,
+                )
+                raise
+            except (APIConnectionError, APIError) as e:
+                logger.error("[Voyage] G%d API error: %s", gi, e)
                 raise
 
+            lat_ms = (time.perf_counter() - t0) * 1e3
             r0 = resp.results[0]
             all_embeddings.extend(r0.embeddings)
             all_chunks.extend(group)
+
+            logger.info(
+                "[Voyage] G%d done lat_ms=%.1f out_emb=%d dim=%d",
+                gi,
+                lat_ms,
+                len(r0.embeddings),
+                self.out_dim,
+            )
+
+        logger.info(
+            "[Voyage] all done total_emb=%d total_chunks=%d", len(all_embeddings), len(all_chunks)
+        )
         return all_embeddings, all_chunks
 
     async def embed_queries(self, queries: List[str]) -> List[List[float]]:
+        tok = count_tokens_total(queries, self.model, self.api_key)
+        logger.info("[Voyage] embed_queries n=%d total_tokens=%d", len(queries), tok)
+
+        t_wait = time.perf_counter()
+        await self.limiter.acquire(tok)
+        waited_ms = (time.perf_counter() - t_wait) * 1e3
+
+        t0 = time.perf_counter()
         r = await self.vo.contextualized_embed(
             inputs=[[q] for q in queries],
             model=self.model,
@@ -82,4 +173,6 @@ class VoyageEmbeddingClientAsync:
             output_dimension=self.out_dim,
             output_dtype=self.out_dtype,
         )
+        lat_ms = (time.perf_counter() - t0) * 1e3
+        logger.info("[Voyage] embed_queries waited_ms=%.1f lat_ms=%.1f", waited_ms, lat_ms)
         return [res.embeddings[0] for res in r.results]

@@ -31,8 +31,3 @@ class Container:
             dim=dim,
             metric=self.vector_cfg.metric,
         )
-
-    def make_raptor_builder(self, params):
-        from raptor.raptor_core import RaptorBuilder
-
-        return RaptorBuilder(params)

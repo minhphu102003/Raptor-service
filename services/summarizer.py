@@ -126,7 +126,7 @@ class GeminiChatLLM:
             len(out_text),
             latency_ms,
         )
-        glogger.debug("[Gemini] output_preview='%s...'", out_text[:300].replace("\n", " "))
+        glogger.info("[Gemini] output_preview='%s...'", out_text[:300].replace("\n", " "))
         return out_text
 
 

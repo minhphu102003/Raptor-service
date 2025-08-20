@@ -4,6 +4,8 @@ import time
 from typing import Any, Dict, List
 import uuid
 
+from sqlalchemy.exc import DBAPIError, IntegrityError
+
 logger = logging.getLogger("raptor")
 
 
@@ -33,12 +35,32 @@ class RaptorBuildService:
         logger.info(
             "[RAPTOR] create_tree tree_id=%s doc_id=%s dataset_id=%s", tree_id, doc_id, dataset_id
         )
+        leaf_rows, link_rows = [], []
+        leaf_ids = []
+        node2chunks = {}
+        for i, it in enumerate(chunk_items):
+            leaf_id = f"{tree_id}::leaf::{i:06d}"
+            leaf_rows.append(
+                {
+                    "node_id": leaf_id,
+                    "tree_id": tree_id,
+                    "level": 0,
+                    "kind": "leaf",
+                    "text": it["text"],
+                    "meta": {"chunk_id": it["id"]},
+                }
+            )
+            link_rows.append({"node_id": leaf_id, "chunk_id": it["id"], "rank": 0})
+            leaf_ids.append(leaf_id)
+            node2chunks[leaf_id] = {it["id"]}
 
-        current_ids = [it["id"] for it in chunk_items]
+        await self.tree_repo.add_nodes(tree_id, leaf_rows)
+        await self.tree_repo.link_node_chunks(link_rows)
+
+        current_ids = leaf_ids
         current_vecs = list(vectors)
+        current_texts = [it["text"] for it in chunk_items]
         level = 0
-
-        id2text = {it["id"]: it["text"] for it in chunk_items}
 
         llm_conc = int(params.get("llm_concurrency", 3))
         sem = asyncio.Semaphore(max(1, llm_conc))
@@ -68,17 +90,15 @@ class RaptorBuildService:
 
             node_rows, edge_rows, link_rows = [], [], []
             new_ids, new_vecs = [], []
-
-            tasks = []
-            group_pack = []
+            tasks, group_pack = [], []
             for gi, idxs in enumerate(groups):
                 member_ids = [current_ids[i] for i in idxs]
-                member_texts = [id2text[mid] for mid in member_ids]
+                member_texts = [current_texts[i] for i in idxs]
+                group_pack.append((gi, member_ids, member_texts))
+                tasks.append(_summarize(member_texts, int(params.get("max_tokens", 256))))
                 logger.debug(
                     "[RAPTOR] L%d G%d members=%d ids=%s", level + 1, gi, len(member_ids), member_ids
                 )
-                group_pack.append((gi, member_ids, member_texts))
-                tasks.append(_summarize(member_texts, int(params.get("max_tokens", 256))))
 
             summaries_for_level = await asyncio.gather(*tasks)
 
@@ -95,8 +115,9 @@ class RaptorBuildService:
                         "meta": {},
                     }
                 )
-                for mid in member_ids:
-                    edge_rows.append({"parent_id": node_id, "child_id": mid})
+                for child_id in member_ids:
+                    edge_rows.append({"parent_id": node_id, "child_id": child_id})
+
                 for rank, mid in enumerate(member_ids):
                     link_rows.append({"node_id": node_id, "chunk_id": mid, "rank": rank})
                 node_ids_for_level.append(node_id)
@@ -106,6 +127,12 @@ class RaptorBuildService:
             now = time.perf_counter()
             sleep_for = (self._last_embed_ts + min_interval) - now
             if sleep_for > 0:
+                logger.info(
+                    "[RAPTOR] L%d embed pacing sleep=%.1f ms (rpm_limit=%d)",
+                    level + 1,
+                    sleep_for * 1e3,
+                    rpm_limit,
+                )
                 await asyncio.sleep(sleep_for)
 
             t_embed = time.perf_counter()
@@ -135,10 +162,47 @@ class RaptorBuildService:
                 new_ids.append(node_id)
                 new_vecs.append(vec)
 
-            await self.tree_repo.add_nodes(tree_id, node_rows)
-            await self.tree_repo.add_edges(tree_id, edge_rows)
-            await self.tree_repo.link_node_chunks(link_rows)
-            await self.emb_repo.bulk_upsert(emb_rows)
+            try:
+                t_persist = time.perf_counter()
+
+                await self.tree_repo.add_nodes(tree_id, node_rows)
+                await self.tree_repo.add_edges(tree_id, edge_rows)
+                await self.tree_repo.link_node_chunks(link_rows)
+                await self.emb_repo.bulk_upsert(emb_rows)
+
+                logger.info(
+                    "[RAPTOR] L%d persist OK nodes=%d edges=%d links=%d embeds=%d ms=%.1f",
+                    level + 1,
+                    len(node_rows),
+                    len(edge_rows),
+                    len(link_rows),
+                    len(emb_rows),
+                    (time.perf_counter() - t_persist) * 1e3,
+                )
+
+            except IntegrityError as e:
+                logger.exception(
+                    "[RAPTOR] L%d persist FAILED (IntegrityError) tree_id=%s nodes=%d edges=%d links=%d embeds=%d",
+                    level + 1,
+                    tree_id,
+                    len(node_rows),
+                    len(edge_rows),
+                    len(link_rows),
+                    len(emb_rows),
+                )
+                raise
+
+            except DBAPIError as e:
+                logger.exception(
+                    "[RAPTOR] L%d persist FAILED (DBAPIError) tree_id=%s", level + 1, tree_id
+                )
+                raise
+
+            except Exception:
+                logger.exception(
+                    "[RAPTOR] L%d persist FAILED (Unexpected) tree_id=%s", level + 1, tree_id
+                )
+                raise
             logger.info(
                 "[RAPTOR] L%d commit nodes=%d edges=%d ms=%.1f",
                 level + 1,

@@ -1,6 +1,5 @@
 import logging
-import os
-import uuid
+import time
 
 from fastapi import (
     APIRouter,
@@ -30,7 +29,7 @@ from utils.render_id import gen_doc_id, resolve_dataset_id
 from .dependencies.files import require_markdown_file
 from .dtos import IngestMarkdownPayload
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s - %(message)s")
+storage_log = logging.getLogger("storage")
 
 router = APIRouter()
 
@@ -124,15 +123,20 @@ async def ingest_markdown(
         )
         await chunk_uow.commit()
 
-    assert len(chunk_ids) == len(chunk_texts), "length mismatch"
-    chunk_items = [
-        {"id": cid, "text": txt, "idx": i}
-        for i, (cid, txt) in enumerate(zip(chunk_ids, chunk_texts))
-    ]
-
     try:
+        t0 = time.perf_counter()
         async with container.make_uow() as emb_uow:
             emb_service = EmbeddingService(emb_uow.session, n_dim=1024)
+
+            storage_log.info(
+                "[STORAGE] upsert start dataset=%s doc=%s rows=%d dim=%d model=%s",
+                dataset_id,
+                doc_id,
+                len(chunk_ids),
+                1024,
+                "voyage-3",
+            )
+
             await emb_service.store_embeddings(
                 dataset_id=dataset_id,
                 owner_type="chunk",
@@ -142,14 +146,27 @@ async def ingest_markdown(
                 dim=1024,
                 extra_meta={"doc_id": doc_id},
             )
+
             await emb_uow.commit()
-        embedded_ok = True
-    except Exception as ex:
-        print(ex)
-        # TODO: write log, trace in here ...
-        embedded_ok = False
+            storage_log.info(
+                "[STORAGE] upsert ok dataset=%s doc=%s rows=%d ms=%.1f",
+                dataset_id,
+                doc_id,
+                len(chunk_ids),
+                (time.perf_counter() - t0) * 1e3,
+            )
+
+    except Exception:
+        storage_log.exception(
+            "[STORAGE] upsert FAILED dataset=%s doc=%s rows=%d", dataset_id, doc_id, len(chunk_ids)
+        )
 
     is_incremental = False
+
+    chunk_items = [
+        {"id": cid, "text": txt, "idx": i}
+        for i, (cid, txt) in enumerate(zip(chunk_ids, chunk_texts))
+    ]
 
     if is_incremental:
         # TODO: implement incremental Raptor in future
@@ -179,7 +196,7 @@ async def ingest_markdown(
                 dataset_id=dataset_id,
                 chunk_items=chunk_items,
                 vectors=vectors,
-                params={"min_k": 2, "max_k": 50, "max_tokens": 256},
+                params={"min_k": 2, "max_k": 50, "max_tokens": 512},
             )
             logging.info("Built RAPTOR tree_id=%s", tree_id)
 
