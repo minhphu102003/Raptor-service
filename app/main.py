@@ -51,6 +51,7 @@ def setup_logging() -> None:
             "voyage": {"level": "INFO", "handlers": ["console", "app_daily"], "propagate": False},
             "gemini": {"level": "INFO", "handlers": ["console", "app_daily"], "propagate": False},
             "storage": {"level": "INFO", "handlers": ["console", "app_daily"], "propagate": False},
+            "cluster": {"level": "INFO", "handlers": ["console", "app_daily"], "propagate": False},
             "watchfiles": {"level": "WARNING", "handlers": [], "propagate": False},
             "watchfiles.main": {"level": "WARNING", "handlers": [], "propagate": False},
             "uvicorn.error": {
