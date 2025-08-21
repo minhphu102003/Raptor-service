@@ -1,20 +1,16 @@
 from __future__ import annotations
 
-from typing import List, Optional
+import logging
+from typing import List
 
 import numpy as np
 from sklearn.mixture import GaussianMixture
 import umap
 
+logger = logging.getLogger("cluster")
+
 
 class GMMRaptorClusterer:
-    """
-    - UMAP giảm chiều (global, local)
-    - Chọn k bằng BIC (GMM)
-    - Soft assignment với ngưỡng xác suất (threshold)
-    - Trả về list các cụm: List[List[int]] (chỉ số của vector)
-    """
-
     def __init__(
         self,
         *,
@@ -32,7 +28,6 @@ class GMMRaptorClusterer:
         n = len(X)
         if n <= 2:
             return X.astype(np.float32)
-        # sqrt(n-1)
         n_neighbors = int((n - 1) ** 0.5) or 2
         n_components = max(1, min(dim, n - 2))
         return umap.UMAP(
@@ -73,7 +68,6 @@ class GMMRaptorClusterer:
         labels_per_point = [np.where(p > threshold)[0].tolist() for p in probs]
         return labels_per_point, n_clusters
 
-    # ---------- main ----------
     def fit_predict(
         self,
         vectors: List[List[float]],
@@ -82,21 +76,30 @@ class GMMRaptorClusterer:
         max_k: int = 50,
         verbose: bool = False,
     ) -> List[List[int]]:
-        """
-        Trả về các cụm theo index gốc của 'vectors'.
-        Lưu ý: soft assignment → 1 điểm có thể xuất hiện ở nhiều cụm.
-        """
+        loglvl = logging.DEBUG if verbose else logging.INFO
+
         X = np.asarray(vectors, dtype=np.float32)
         n = X.shape[0]
+        self.logger.log(
+            loglvl, "[CLUSTER] Start fit_predict: n=%d, min_k=%d, max_k=%d", n, min_k, max_k
+        )
+
         if n == 0:
+            self.logger.log(loglvl, "[CLUSTER] Empty input -> []")
             return []
         if n <= min_k:
+            self.logger.log(loglvl, "[CLUSTER] n<=min_k -> single cluster with %d points", n)
+            return [list(range(n))]
+
+        if n <= min_k or n < 3:
+            self.logger.log(
+                loglvl, "[CLUSTER] small n fallback -> single cluster with %d points", n
+            )
             return [list(range(n))]
 
         Xg = self._umap_global(X, self.reduction_dim)
         global_labels_per_point, n_global = self._gmm_soft_clusters(Xg, self.threshold, max_k)
-        if verbose:
-            print(f"[RAPTOR] Global clusters: {n_global}")
+        self.logger.log(loglvl, "[CLUSTER] Global clusters: %d", n_global)
 
         global_groups: list[list[int]] = [[] for _ in range(n_global)]
         for idx, labs in enumerate(global_labels_per_point):
@@ -110,19 +113,28 @@ class GMMRaptorClusterer:
             if not member_idx:
                 continue
             X_local = X[np.array(member_idx)]
-            if verbose:
-                print(f"[RAPTOR] Global group {gi}: {len(member_idx)} pts")
+            self.logger.log(loglvl, "[CLUSTER] Global group %d: %d pts", gi, len(member_idx))
 
             if len(member_idx) <= self.reduction_dim + 1:
-                for idx in member_idx:
-                    all_local_cluster_ids_per_point[idx].append(total_local_clusters)
-                total_local_clusters += 1
+                if len(member_idx) >= 2:
+                    for idx in member_idx:
+                        all_local_cluster_ids_per_point[idx].append(total_local_clusters)
+                    total_local_clusters += 1
+                    self.logger.log(
+                        loglvl,
+                        "[CLUSTER] Global group %d -> kept as one local cluster (size=%d)",
+                        gi,
+                        len(member_idx),
+                    )
+                else:
+                    self.logger.log(loglvl, "[CLUSTER] Global group %d -> skipped singleton", gi)
                 continue
 
             Xl = self._umap_local(X_local, self.reduction_dim)
-            labels_per_point_local, n_local = self._gmm_soft_clusters(Xl, self.threshold)
-            if verbose:
-                print(f"[RAPTOR] Local clusters in global {gi}: {n_local}")
+            labels_per_point_local, n_local = self._gmm_soft_clusters(
+                Xl, self.threshold, max_k=max_k
+            )
+            self.logger.log(loglvl, "[CLUSTER] Local clusters in global %d: %d", gi, n_local)
 
             for offset, local_labels in enumerate(labels_per_point_local):
                 orig_idx = member_idx[offset]
@@ -131,6 +143,9 @@ class GMMRaptorClusterer:
             total_local_clusters += n_local
 
         if total_local_clusters == 0:
+            self.logger.log(
+                loglvl, "[CLUSTER] No local clusters -> single cluster fallback with %d points", n
+            )
             return [list(range(n))]
 
         groups: list[list[int]] = [[] for _ in range(total_local_clusters)]
@@ -138,4 +153,13 @@ class GMMRaptorClusterer:
             for lab in labs:
                 groups[lab].append(i)
 
-        return [g for g in groups if g]
+        before = len(groups)
+        groups = [g for g in groups if len(g) >= 2]
+        self.logger.log(
+            loglvl,
+            "[CLUSTER] Filtered singleton clusters: %d -> %d kept (min_size=2)",
+            before,
+            len(groups),
+        )
+
+        return groups

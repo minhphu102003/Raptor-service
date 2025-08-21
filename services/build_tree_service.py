@@ -35,9 +35,15 @@ class RaptorBuildService:
         logger.info(
             "[RAPTOR] create_tree tree_id=%s doc_id=%s dataset_id=%s", tree_id, doc_id, dataset_id
         )
+        rpm_limit = int(params.get("rpm_limit", 3))
+        min_interval = 60.0 / max(1, rpm_limit)
+        if not hasattr(self, "_last_embed_ts"):
+            self._last_embed_ts = time.perf_counter() - min_interval
+
         leaf_rows, link_rows = [], []
         leaf_ids = []
-        node2chunks = {}
+        chunk2leaf = {}
+        node2chunk_ids = {}
         for i, it in enumerate(chunk_items):
             leaf_id = f"{tree_id}::leaf::{i:06d}"
             leaf_rows.append(
@@ -50,9 +56,11 @@ class RaptorBuildService:
                     "meta": {"chunk_id": it["id"]},
                 }
             )
+            logger.info("[RAPTOR] chunk_id=%s text=%s", it["id"], it["text"])
             link_rows.append({"node_id": leaf_id, "chunk_id": it["id"], "rank": 0})
             leaf_ids.append(leaf_id)
-            node2chunks[leaf_id] = {it["id"]}
+            chunk2leaf[it["id"]] = leaf_id
+            node2chunk_ids[leaf_id] = [it["id"]]
 
         await self.tree_repo.add_nodes(tree_id, leaf_rows)
         await self.tree_repo.link_node_chunks(link_rows)
@@ -95,7 +103,7 @@ class RaptorBuildService:
                 member_ids = [current_ids[i] for i in idxs]
                 member_texts = [current_texts[i] for i in idxs]
                 group_pack.append((gi, member_ids, member_texts))
-                tasks.append(_summarize(member_texts, int(params.get("max_tokens", 256))))
+                tasks.append(_summarize(member_texts, int(params.get("max_tokens", 512))))
                 logger.debug(
                     "[RAPTOR] L%d G%d members=%d ids=%s", level + 1, gi, len(member_ids), member_ids
                 )
@@ -118,25 +126,30 @@ class RaptorBuildService:
                 for child_id in member_ids:
                     edge_rows.append({"parent_id": node_id, "child_id": child_id})
 
-                for rank, mid in enumerate(member_ids):
-                    link_rows.append({"node_id": node_id, "chunk_id": mid, "rank": rank})
+                agg_chunk_ids = []
+                for mid in member_ids:
+                    agg_chunk_ids.extend(node2chunk_ids[mid])
+
+                seen = set()
+                agg_chunk_ids = [cid for cid in agg_chunk_ids if not (cid in seen or seen.add(cid))]
+
+                for rank, cid in enumerate(agg_chunk_ids):
+                    link_rows.append({"node_id": node_id, "chunk_id": cid, "rank": rank})
+                    logger.info("[RAPTOR] add link rows chunk_id=%s node_id=%s", cid, node_id)
+
+                node2chunk_ids[node_id] = agg_chunk_ids
                 node_ids_for_level.append(node_id)
 
-            rpm_limit = int(params.get("rpm_limit", 3))  #
-            min_interval = 60.0 / max(1, rpm_limit)
             now = time.perf_counter()
             sleep_for = (self._last_embed_ts + min_interval) - now
             if sleep_for > 0:
-                logger.info(
-                    "[RAPTOR] L%d embed pacing sleep=%.1f ms (rpm_limit=%d)",
-                    level + 1,
-                    sleep_for * 1e3,
-                    rpm_limit,
-                )
                 await asyncio.sleep(sleep_for)
 
-            t_embed = time.perf_counter()
+            self._last_embed_ts = time.perf_counter()
             vecs = await self.embedder.embed_docs(summaries_for_level)
+
+            t_embed = time.perf_counter()
+
             self._last_embed_ts = time.perf_counter()
             logger.info(
                 "[RAPTOR] L%d batch-embed n=%d ms=%.1f",
@@ -159,8 +172,8 @@ class RaptorBuildService:
                         "meta": {"tree_id": tree_id, "level": level + 1},
                     }
                 )
-                new_ids.append(node_id)
-                new_vecs.append(vec)
+            new_ids = node_ids_for_level
+            new_vecs = vecs
 
             try:
                 t_persist = time.perf_counter()
@@ -210,8 +223,7 @@ class RaptorBuildService:
                 len(edge_rows),
                 (time.perf_counter() - t0) * 1e3,
             )
-
-            current_ids, current_vecs = new_ids, new_vecs
+            current_ids, current_vecs, current_texts = new_ids, new_vecs, summaries_for_level
             level += 1
 
         logger.info("[RAPTOR] done tree_id=%s levels=%d", tree_id, level)
