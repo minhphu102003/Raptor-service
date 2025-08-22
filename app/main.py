@@ -7,7 +7,7 @@ from fastapi import FastAPI
 
 from app.config import settings
 from app.container import Container
-from interfaces_adaptor.http.controllers import router as ingest_router
+from interfaces_adaptor.http.routes.root import root_router
 
 
 def setup_logging() -> None:
@@ -84,4 +84,4 @@ async def lifespan(app: FastAPI):
 
 setup_logging()
 app = FastAPI(title="RAPTOR Service", lifespan=lifespan)
-app.include_router(ingest_router, prefix=settings.api_prefix)
+app.include_router(root_router, prefix=settings.api_prefix)

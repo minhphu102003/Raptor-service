@@ -18,9 +18,7 @@ class EmbeddingRepoPg:
         insert_stmt = pg_insert(EmbeddingORM.__table__).values(rows)
 
         stmt = insert_stmt.on_conflict_do_update(
-            index_elements=[
-                EmbeddingORM.__table__.c.id
-            ],  # hoặc dùng constraint=... / cột unique khác
+            index_elements=[EmbeddingORM.__table__.c.id],
             set_={
                 "dataset_id": insert_stmt.excluded.dataset_id,
                 "owner_type": insert_stmt.excluded.owner_type,

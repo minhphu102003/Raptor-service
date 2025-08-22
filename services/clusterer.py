@@ -4,8 +4,8 @@ import logging
 from typing import List
 
 import numpy as np
-from sklearn.mixture import GaussianMixture
-import umap
+
+from utils.cluster import gmm_soft_clusters, umap_reduce
 
 logger = logging.getLogger("cluster")
 
@@ -23,50 +23,6 @@ class GMMRaptorClusterer:
         self.reduction_dim = reduction_dim
         self.threshold = threshold
         self.random_state = random_state
-
-    def _umap_global(self, X: np.ndarray, dim: int) -> np.ndarray:
-        n = len(X)
-        if n <= 2:
-            return X.astype(np.float32)
-        n_neighbors = int((n - 1) ** 0.5) or 2
-        n_components = max(1, min(dim, n - 2))
-        return umap.UMAP(
-            n_neighbors=n_neighbors, n_components=n_components, metric=self.metric
-        ).fit_transform(X)
-
-    def _umap_local(self, X: np.ndarray, dim: int, num_neighbors: int = 10) -> np.ndarray:
-        n = len(X)
-        if n <= 2:
-            return X.astype(np.float32)
-        n_components = max(1, min(dim, n - 2))
-        return umap.UMAP(
-            n_neighbors=min(num_neighbors, n - 1),
-            n_components=n_components,
-            metric=self.metric,
-        ).fit_transform(X)
-
-    def _choose_k_by_bic(self, X: np.ndarray, min_k: int, max_k: int) -> int:
-        ub = max(1, min(max_k, len(X)))
-        lb = max(1, min(min_k, ub))
-        if lb >= ub:
-            return 1
-        ks = np.arange(lb, ub + 1)
-        bics = []
-        for k in ks:
-            gm = GaussianMixture(n_components=k, random_state=self.random_state)
-            gm.fit(X)
-            bics.append(gm.bic(X))
-        return int(ks[int(np.argmin(bics))])
-
-    def _gmm_soft_clusters(
-        self, X: np.ndarray, threshold: float, max_k: int
-    ) -> tuple[list[list[int]], int]:
-        n_clusters = self._choose_k_by_bic(X, 1, min(max_k, len(X)))
-        gm = GaussianMixture(n_components=n_clusters, random_state=self.random_state)
-        gm.fit(X)
-        probs = gm.predict_proba(X)
-        labels_per_point = [np.where(p > threshold)[0].tolist() for p in probs]
-        return labels_per_point, n_clusters
 
     def fit_predict(
         self,
@@ -93,8 +49,8 @@ class GMMRaptorClusterer:
             logger.log(loglvl, "[CLUSTER] small n fallback -> single cluster with %d points", n)
             return [list(range(n))]
 
-        Xg = self._umap_global(X, self.reduction_dim)
-        global_labels_per_point, n_global = self._gmm_soft_clusters(Xg, self.threshold, max_k)
+        Xg = umap_reduce(X, self.reduction_dim, self.metric, local=False)
+        global_labels_per_point, n_global = gmm_soft_clusters(Xg, self.threshold, max_k)
         logger.log(loglvl, "[CLUSTER] Global clusters: %d", n_global)
 
         global_groups: list[list[int]] = [[] for _ in range(n_global)]
@@ -123,9 +79,10 @@ class GMMRaptorClusterer:
                 )
                 continue
 
-            Xl = self._umap_local(X_local, self.reduction_dim)
-            labels_per_point_local, n_local = self._gmm_soft_clusters(
-                Xl, self.threshold, max_k=max_k
+            Xl = umap_reduce(X_local, self.reduction_dim, self.metric, n_neighbors=10, local=True)
+
+            labels_per_point_local, n_local = gmm_soft_clusters(
+                Xl, self.threshold, max_k=max_k, random_state=self.random_state
             )
             logger.log(loglvl, "[CLUSTER] Local clusters in global %d: %d", gi, n_local)
 

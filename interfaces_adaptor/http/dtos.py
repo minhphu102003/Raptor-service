@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, Json
 
 
 class RaptorConfig(BaseModel):
@@ -41,16 +41,11 @@ class RaptorParams(BaseModel):
 
 class IngestMarkdownPayload(BaseModel):
     dataset_id: str
-    doc_id: Optional[str] = None
     source: Optional[str] = None
     tags: Optional[List[str]] = None
     extra_meta: Optional[Dict[str, Any]] = None
-    build_tree: bool = True
-    raptor_params: Optional[RaptorParams] = None
-    summary_llm: Optional[SummaryLLM] = None
-    batch_size: int = 64
+    build_tree: Optional[bool] = True
+    summary_llm: Optional[Json["SummaryLLM"]] = None
     vector_index: Optional[Dict[str, Any]] = None
     upsert_mode: Literal["upsert", "replace", "skip_duplicates"] = "upsert"
-    dedupe: Optional[Dict[str, Any]] = None
-    mode: Literal["sync", "async"] = "sync"
     byok: Optional[BYOK] = None
