@@ -1,4 +1,4 @@
-from typing import Dict, List, Literal, Optional, Protocol
+from typing import Dict, Literal, Optional, Protocol
 
 from pydantic import BaseModel
 

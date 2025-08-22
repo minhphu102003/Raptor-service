@@ -1,7 +1,9 @@
 import logging
+import os
 import time
 from typing import Callable, List, Optional, Tuple
 
+from dotenv import load_dotenv
 import voyageai
 from voyageai.error import APIConnectionError, APIError, RateLimitError
 
@@ -11,11 +13,12 @@ from utils.ratelimit import RateLimiter
 
 logger = logging.getLogger("voyage")
 
+load_dotenv()
+
 
 class VoyageEmbeddingClientAsync:
     def __init__(
         self,
-        api_key: str,
         model: str = "voyage-context-3",
         out_dim: int = 1024,
         out_dtype: str = "float",
@@ -27,8 +30,8 @@ class VoyageEmbeddingClientAsync:
         log_chunks: bool = False,
         chunk_preview_chars: int = 160,
     ):
-        self.api_key = api_key
-        self.vo = voyageai.AsyncClient(api_key=api_key, max_retries=max_retries)
+        self.api_key = os.getenv("VOYAGEAI_KEY")
+        self.vo = voyageai.AsyncClient(api_key=self.api_key, max_retries=max_retries)
         self.model = model
         self.out_dim = out_dim
         self.out_dtype = out_dtype

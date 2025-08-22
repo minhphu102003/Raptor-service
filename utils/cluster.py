@@ -1,71 +1,52 @@
-import logging
-
-logger = logging.getLogger("cluster")
-
-
-def handle_small_input(X, n, min_k, loglvl):
-    if n == 0:
-        logger.log(loglvl, "[CLUSTER] Empty input -> []")
-        return []
-    if n <= min_k or n <= 3:
-        logger.log(loglvl, "[CLUSTER] small n fallback -> single cluster with %d points", n)
-        return [list(range(n))]
-    return None
+import numpy as np
+from sklearn.mixture import GaussianMixture
+import umap
 
 
-def assign_small_group(gi, member_idx, all_local_ids, total_local_clusters, reduction_dim, loglvl):
-    if len(member_idx) >= 2:
-        for idx in member_idx:
-            all_local_ids[idx].append(total_local_clusters)
-        total_local_clusters += 1
-        logger.log(
-            loglvl,
-            "[CLUSTER] Global group %d -> kept as one local cluster (size=%d)",
-            gi,
-            len(member_idx),
-        )
+def umap_reduce(
+    X: np.ndarray,
+    dim: int,
+    metric: str = "cosine",
+    n_neighbors: int | None = None,
+    local: bool = False,
+) -> np.ndarray:
+    n = len(X)
+    if n <= 2:
+        return X.astype(np.float32)
+
+    n_components = max(1, min(dim, n - 2))
+    if local:
+        n_neighbors = min(n_neighbors or 10, n - 1)
     else:
-        idx_single = member_idx[0]
-        all_local_ids[idx_single].append(total_local_clusters)
-        total_local_clusters += 1
-        logger.log(loglvl, "[CLUSTER] Global group %d -> skipped singleton", gi)
-    return total_local_clusters
+        n_neighbors = int((n - 1) ** 0.5) or 2
+
+    return umap.UMAP(
+        n_neighbors=n_neighbors,
+        n_components=n_components,
+        metric=metric,
+    ).fit_transform(X)
 
 
-def prune_and_find_orphans(groups):
-    sizes = [len(g) for g in groups]
-    multi_ids = [gi for gi, s in enumerate(sizes) if s >= 2]
-    singleton_ids = [gi for gi, s in enumerate(sizes) if s == 1]
+def choose_k_by_bic(X: np.ndarray, min_k: int, max_k: int, random_state: int = 224) -> int:
+    ub = max(1, min(max_k, len(X)))
+    lb = max(1, min(min_k, ub))
+    if lb >= ub:
+        return 1
+    ks = np.arange(lb, ub + 1)
+    bics = []
+    for k in ks:
+        gm = GaussianMixture(n_components=k, random_state=random_state)
+        gm.fit(X)
+        bics.append(gm.bic(X))
+    return int(ks[int(np.argmin(bics))])
 
-    covered_by_multi = set()
-    for gi in multi_ids:
-        covered_by_multi.update(groups[gi])
 
-    redundant_singleton_ids = {gi for gi in singleton_ids if groups[gi][0] in covered_by_multi}
-    groups_pruned = [g for gi, g in enumerate(groups) if gi not in redundant_singleton_ids]
-
-    sizes2 = [len(g) for g in groups_pruned]
-    multi_ids2 = [gi for gi, s in enumerate(sizes2) if s >= 2]
-    singleton_ids2 = [gi for gi, s in enumerate(sizes2) if s == 1]
-
-    covered_by_multi2 = set()
-    for gi in multi_ids2:
-        covered_by_multi2.update(groups_pruned[gi])
-
-    orphan_points = [
-        groups_pruned[gi][0]
-        for gi in singleton_ids2
-        if groups_pruned[gi][0] not in covered_by_multi2
-    ]
-
-    meta = {
-        "n_groups_raw": len(sizes),
-        "n_groups_pruned": len(groups_pruned),
-        "n_multi": len(multi_ids2),
-        "n_singleton": len(singleton_ids2),
-        "orphan_points": orphan_points,
-        "redundant_singleton_ids": sorted(
-            gi for gi in singleton_ids if groups[gi][0] in covered_by_multi
-        ),
-    }
-    return groups_pruned, orphan_points, meta
+def gmm_soft_clusters(
+    X: np.ndarray, threshold: float, max_k: int, random_state: int = 224
+) -> tuple[list[list[int]], int]:
+    n_clusters = choose_k_by_bic(X, 1, min(max_k, len(X)), random_state)
+    gm = GaussianMixture(n_components=n_clusters, random_state=random_state)
+    gm.fit(X)
+    probs = gm.predict_proba(X)
+    labels_per_point = [np.where(p > threshold)[0].tolist() for p in probs]
+    return labels_per_point, n_clusters
