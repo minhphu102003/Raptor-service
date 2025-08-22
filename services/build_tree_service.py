@@ -103,7 +103,7 @@ class RaptorBuildService:
                 member_ids = [current_ids[i] for i in idxs]
                 member_texts = [current_texts[i] for i in idxs]
                 group_pack.append((gi, member_ids, member_texts))
-                tasks.append(_summarize(member_texts, int(params.get("max_tokens", 512))))
+                tasks.append(_summarize(member_texts, int(params.get("max_tokens", 4048))))
                 logger.debug(
                     "[RAPTOR] L%d G%d members=%d ids=%s", level + 1, gi, len(member_ids), member_ids
                 )
@@ -172,6 +172,16 @@ class RaptorBuildService:
                         "meta": {"tree_id": tree_id, "level": level + 1},
                     }
                 )
+
+            if len(node_ids_for_level) == 1:
+                root_id = node_ids_for_level[0]
+                for row in node_rows:
+                    if row["node_id"] == root_id:
+                        row["kind"] = "root"
+                        row["meta"] = {**row.get("meta", {}), "is_root": True}
+                        break
+                logger.info("[RAPTOR] L%d -> identified root node: %s", level + 1, root_id)
+
             new_ids = node_ids_for_level
             new_vecs = vecs
 

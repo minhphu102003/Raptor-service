@@ -142,7 +142,7 @@ async def ingest_markdown(
                 owner_type="chunk",
                 owner_ids=chunk_ids,
                 vectors=vectors,
-                model="voyage-3",
+                model="voyage-context-3",
                 dim=1024,
                 extra_meta={"doc_id": doc_id},
             )
