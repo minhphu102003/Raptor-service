@@ -1,0 +1,2 @@
+class EmptyOutputError(RuntimeError):
+    pass
