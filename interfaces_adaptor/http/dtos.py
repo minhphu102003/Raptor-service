@@ -13,14 +13,6 @@ class ParserConfigGeneric(BaseModel):
     extra: Dict[str, Any] = Field(default_factory=dict)
 
 
-class SummaryLLM(BaseModel):
-    model: Optional[str] = None
-    provider: Optional[str] = None
-    temperature: float = 0.2
-    max_tokens: int = 1024
-    use_builtin: bool = True
-
-
 class BYOK(BaseModel):
     openai_api_key: Optional[str] = None
     azure_openai: Optional[Dict[str, str]] = None
@@ -45,7 +37,7 @@ class IngestMarkdownPayload(BaseModel):
     tags: Optional[List[str]] = None
     extra_meta: Optional[Dict[str, Any]] = None
     build_tree: Optional[bool] = True
-    summary_llm: Optional[Json["SummaryLLM"]] = None
+    summary_llm: Optional[str] = None
     vector_index: Optional[Dict[str, Any]] = None
     upsert_mode: Literal["upsert", "replace", "skip_duplicates"] = "upsert"
     byok: Optional[BYOK] = None
