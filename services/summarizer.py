@@ -1,15 +1,16 @@
 import logging
 import os
 from textwrap import dedent
-import time
 from typing import Optional, Protocol, Sequence
 
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 
+from services.fpt_llm.client import ALLOWED_MODELS
 from utils.token import context_limit_for, count_input_tokens, fits_context
 
+from .fpt_llm import FPTLLMClient
 from .gemini_chat import GeminiChatLLM
 
 load_dotenv()
@@ -74,6 +75,8 @@ class LLMSummarizer:
 OPENAI_HIGH = "gpt-4.1"
 OPENAI_EFFICIENT = "gpt-4.1-mini"
 GEMINI_FAST = "gemini-2.5-flash"
+DEEPSEEK_V3 = "DeepSeek-V3"
+QWEN3_235B = "Qwen3-235B-A22B"
 
 
 def make_llm(model_id: str) -> ChatLLM:
@@ -82,4 +85,6 @@ def make_llm(model_id: str) -> ChatLLM:
         return OpenAIChatLLM(model=model_id)
     if mid.startswith("gemini"):
         return GeminiChatLLM(model=model_id)
+    if model_id in ALLOWED_MODELS:
+        return FPTLLMClient(model=model_id)
     raise ValueError(f"Unsupported model id: {model_id}")

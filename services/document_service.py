@@ -14,6 +14,7 @@ from services import (
 )
 from usecases import PersistDocumentCmd, PersistDocumentUseCase
 from utils import gen_doc_id, resolve_dataset_id
+from utils.lll_sumary import get_llm_from_payload
 
 storage_log = logging.getLogger("storage")
 
@@ -96,7 +97,7 @@ class DocumentService:
 
             embedder = VoyageEmbedderAdapter(cce)
             clusterer = GMMRaptorClusterer()
-            llm = make_llm(GEMINI_FAST)
+            llm = get_llm_from_payload(pl)
             summarizer = LLMSummarizer(llm)
 
             raptor = RaptorBuildService(

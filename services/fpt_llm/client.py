@@ -1,9 +1,13 @@
+import asyncio
 import json
 import os
+import threading
 import time
 from typing import Any, Dict, Iterator, List, Optional, Union
 
 import requests
+
+from utils.http import parse_retry_after
 
 from .errors import APIError, AuthenticationError, RateLimitError
 from .logging_utils import get_logger
@@ -28,7 +32,9 @@ class FPTLLMClient:
         backoff_base: float = 0.5,
         backoff_max: float = 20.0,
         backoff_jitter: float = 0.25,
-        max_concurrent: int = 4,  #
+        max_concurrent: int = 4,
+        *,
+        model: Optional[str] = None,
     ) -> None:
         self.api_key = api_key or os.getenv("FPT_API_KEY")
         if not self.api_key:
@@ -47,9 +53,7 @@ class FPTLLMClient:
             max_delay=backoff_max,
             jitter=backoff_jitter,
         )
-
-        import threading
-
+        self.model = model
         self._sem = threading.BoundedSemaphore(value=max(1, int(max_concurrent)))
 
     def chat_completions(
@@ -90,43 +94,65 @@ class FPTLLMClient:
                 expect_stream=True,
             )
 
-    def completions(
-        self,
-        model: str,
-        prompt: str,
-        temperature: Optional[float] = None,
-        top_p: Optional[float] = None,
-        max_tokens: Optional[int] = None,
-        stream: bool = False,
-        extra_body: Optional[Dict[str, Any]] = None,
-    ) -> Union[Dict[str, Any], Iterator[ChatCompletionChunk]]:
-        self._validate_model(model)
-        payload: Dict[str, Any] = {"model": model, "prompt": prompt}
-        if temperature is not None:
-            payload["temperature"] = temperature
-        if top_p is not None:
-            payload["top_p"] = top_p
-        if max_tokens is not None:
-            payload["max_tokens"] = max_tokens
-        if extra_body:
-            payload.update(extra_body)
-
-        url = f"{self.base_url}/completions"
-        headers = self._headers()
-
-        if not stream:
-            return self._call_with_throttle(
-                lambda: self.session.post(url, headers=headers, json=payload, timeout=self.timeout),
-                expect_stream=False,
+    async def summarize(self, prompt: str, *, max_tokens: int, temperature: float) -> str:
+        if not self.model:
+            raise ValueError(
+                "FPTLLMClient.model is not set. Pass model=... in __init__ or set client.model before calling summarize()."
             )
-        else:
-            payload["stream"] = True
-            return self._call_with_throttle(
-                lambda: self.session.post(
-                    url, headers=headers, json=payload, timeout=self.timeout, stream=True
-                ),
-                expect_stream=True,
+        messages = [
+            {"role": "system", "content": "You are a concise, faithful summarizer."},
+            {"role": "user", "content": prompt},
+        ]
+
+        def _request_once() -> Dict[str, Any]:
+            return self.chat_completions(
+                model=self.model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                stream=False,
             )
+
+        resp: Dict[str, Any] = await asyncio.to_thread(_request_once)
+
+        try:
+            choices = resp.get("choices") or []
+            if not choices:
+                raise KeyError("Missing 'choices' in response")
+
+            first = choices[0]
+            content = None
+
+            if isinstance(first, dict) and isinstance(first.get("message"), dict):
+                content = first["message"].get("content")
+
+            if content is None and "text" in first:
+                content = first["text"]
+
+            if isinstance(content, list):
+                parts = []
+                for p in content:
+                    if isinstance(p, dict):
+                        if p.get("type") == "text" and "text" in p:
+                            parts.append(p["text"])
+                        elif "content" in p:
+                            parts.append(str(p["content"]))
+                    elif isinstance(p, str):
+                        parts.append(p)
+                content = "".join(parts).strip()
+
+            if not isinstance(content, str) or not content.strip():
+                raise ValueError("Empty content extracted from completion")
+
+            if content.lower().startswith("summary:"):
+                content = content[len("summary:") :].strip()
+
+            return content
+
+        except Exception as e:
+            log.exception("Failed to parse chat completion response: %s", e)
+            payload_keys = list(resp.keys()) if isinstance(resp, dict) else type(resp).__name__
+            raise RuntimeError(f"Bad completion payload ({payload_keys}): {e}") from e
 
     def _validate_model(self, model: str):
         if model not in ALLOWED_MODELS:
@@ -146,7 +172,7 @@ class FPTLLMClient:
             if resp.status_code == 401 or resp.status_code == 403:
                 raise AuthenticationError(f"Auth failed ({resp.status_code}): {resp.text}")
             if resp.status_code == 429:
-                retry_after = _parse_retry_after(resp)
+                retry_after = parse_retry_after(resp)
                 if attempt > self._backoff.max_retries:
                     raise RateLimitError(
                         f"Rate limited after {attempt - 1} retries: {resp.text}",
@@ -164,7 +190,6 @@ class FPTLLMClient:
                 time.sleep(self._backoff.compute_sleep(attempt, None))
                 continue
 
-            # OK
             if not expect_stream:
                 return self._handle_json_response(resp)
             else:
@@ -206,13 +231,3 @@ class FPTLLMClient:
                 delta=delta_text,
                 raw=payload,
             )
-
-
-def _parse_retry_after(resp: requests.Response) -> Optional[float]:
-    ra = resp.headers.get("Retry-After")
-    if not ra:
-        return None
-    try:
-        return float(ra)
-    except Exception:
-        return None

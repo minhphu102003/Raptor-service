@@ -34,5 +34,20 @@ See: https://github.com/fpt-corp/ai-marketplace (API uses Authorization: Bearer 
 """
 
 from .client import FPTLLMClient
-from .errors import APIError, AuthenticationError, FPTLLMError, RateLimitError
+from .errors import (
+    APIError,
+    AuthenticationError,
+    FPTLLMError,
+    RateLimitError,
+)
 from .params import ChatCompletionChunk, ChatMessage
+
+__all__ = [
+    "FPTLLMClient",
+    "APIError",
+    "AuthenticationError",
+    "FPTLLMError",
+    "RateLimitError",
+    "ChatCompletionChunk",
+    "ChatMessage",
+]

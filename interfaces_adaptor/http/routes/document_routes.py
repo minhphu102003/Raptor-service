@@ -3,6 +3,7 @@ from typing import Annotated, List, Literal, Optional
 
 from fastapi import APIRouter, File, Form, Header, HTTPException, Request, UploadFile, status
 
+from constants.enum import SummarizeModel
 from interfaces_adaptor.http.controllers.document_controller import DocumentController
 from interfaces_adaptor.http.dependencies.files import require_markdown_file
 
@@ -30,7 +31,7 @@ async def ingest_markdown(
     tags: Annotated[Optional[List[str]], Form()] = None,
     extra_meta: Annotated[Optional[str], Form()] = None,
     build_tree: Annotated[Optional[bool], Form()] = True,
-    summary_llm: Annotated[Optional[str], Form()] = None,
+    summary_llm: Annotated[Optional[SummarizeModel], Form()] = None,
     vector_index: Annotated[Optional[str], Form()] = None,
     upsert_mode: Annotated[Literal["upsert", "replace", "skip_duplicates"], Form()] = "upsert",
     byok_openai_api_key: Annotated[Optional[str], Form()] = None,
