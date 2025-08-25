@@ -35,7 +35,7 @@ async def ingest_markdown(
     vector_index: Annotated[Optional[str], Form()] = None,
     upsert_mode: Annotated[Literal["upsert", "replace", "skip_duplicates"], Form()] = "upsert",
     byok_openai_api_key: Annotated[Optional[str], Form()] = None,
-    byok_azure_openai: Annotated[Optional[str], Form()] = None,  # JSON string (dict)
+    byok_azure_openai: Annotated[Optional[str], Form()] = None,
     byok_cohere_api_key: Annotated[Optional[str], Form()] = None,
     byok_huggingface_token: Annotated[Optional[str], Form()] = None,
     byok_dashscope_api_key: Annotated[Optional[str], Form()] = None,

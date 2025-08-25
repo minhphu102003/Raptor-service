@@ -128,7 +128,6 @@ class DocumentService:
                 "chunks": len(chunk_ids),
                 "indexed": {"upserted": len(chunk_ids)},
                 "tree_id": tree_id,
-                "source_uri": res.source_uri,
                 "checksum": res.checksum,
             },
         }
