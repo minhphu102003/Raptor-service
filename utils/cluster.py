@@ -19,6 +19,7 @@ def umap_reduce(
         n_neighbors = min(n_neighbors or 10, n - 1)
     else:
         n_neighbors = int((n - 1) ** 0.5) or 2
+    n_neighbors = max(2, min(n_neighbors, n - 1))
 
     return umap.UMAP(
         n_neighbors=n_neighbors,

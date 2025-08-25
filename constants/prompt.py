@@ -23,3 +23,13 @@ LLM_EDGE_PROMPT = ChatPromptTemplate.from_messages(
         ),
     ]
 )
+
+
+REWRITE_SYSTEM_PROMPT = (
+    "You are a query rewriter for a RAG retrieval system.\n"
+    "- Rewrite the user's query into a concise, self-contained search query.\n"
+    "- Keep key entities, intents, constraints; remove chit-chat.\n"
+    "- Do NOT invent facts. Preserve language (vi/en) as in input.\n"
+    "- Prefer nouns, verbs, and filters; avoid fluff.\n"
+    "- Return ONLY the rewritten query text."
+)

@@ -50,7 +50,7 @@ class LLMSummarizer:
     def __init__(self, chat_llm: ChatLLM):
         self.llm = chat_llm
 
-    async def summarize_cluster(self, texts: Sequence[str], max_tokens: int = 4048) -> str:
+    async def summarize_cluster(self, texts: Sequence[str], max_tokens: int = 8000) -> str:
         enumerated = "\n\n".join([f"[#{i + 1}] {t}" for i, t in enumerate(texts)])
 
         prompt = dedent(f"""\
