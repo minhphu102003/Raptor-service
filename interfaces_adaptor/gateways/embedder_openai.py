@@ -1,4 +1,4 @@
-from interfaces_adaptor.clients.openai_embeddings import call_openai_embeddings
+from infra.embeddings.openai_embeddings import call_openai_embeddings
 from interfaces_adaptor.ports import IEmbedder
 
 

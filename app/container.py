@@ -3,7 +3,6 @@ from infra.chunking.langchain_chunker import LangChainChunker
 from infra.db.session import build_session_factory
 from infra.uow.sqlalchemy_uow import SqlAlchemyUnitOfWork
 from interfaces_adaptor.gateways.file_source import FileSourceHybrid
-from interfaces_adaptor.gateways.vector_pgvector import PgVectorIndex
 from interfaces_adaptor.repositories.document_repo_pg import DocumentRepoPg
 
 
@@ -22,12 +21,3 @@ class Container:
 
     def make_doc_repo(self, uow: SqlAlchemyUnitOfWork) -> DocumentRepoPg:
         return DocumentRepoPg(uow)
-
-    def make_vector_index(self, dim: int):
-        return PgVectorIndex(
-            conn_str=self.vector_dsn,
-            name=self.vector_cfg.name,
-            namespace=self.vector_cfg.namespace,
-            dim=dim,
-            metric=self.vector_cfg.metric,
-        )

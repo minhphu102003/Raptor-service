@@ -1,10 +1,20 @@
+import asyncio
 import os
 from typing import Literal, Optional
 
+from dotenv import load_dotenv
+from fastapi import HTTPException
 from google import genai
 from google.genai.types import HttpOptions, Part
 import tiktoken
 from vertexai.preview import tokenization
+
+from constants.prompt import REWRITE_SYSTEM_PROMPT
+from constants.query import QUERY_HARD_CAP, QUERY_SOFT_CAP, QUERY_TARGET
+from services.fpt_llm.client import FPTLLMClient
+from utils.packing import count_tokens_total
+
+load_dotenv()
 
 ModelVendor = Literal["openai", "gemini"]
 
@@ -80,3 +90,50 @@ def fits_context(
 ) -> bool:
     limit = context_limit_for(model_id)
     return (input_tokens + max_output_tokens + safety_margin) <= limit
+
+
+# ---------- VOYAGE ----------
+
+
+def _truncate_to_tokens(text: str, target_tokens: int, api_key: Optional[str] = None) -> str:
+    n = count_tokens_total(text, api_key=api_key)
+    if n <= target_tokens:
+        return text
+    ratio = max(0.5, target_tokens / max(1, n))
+    cut = max(32, int(len(text) * ratio))
+    return text[:cut].rstrip()
+
+
+def _rewrite_sync(client: "FPTLLMClient", query: str, target_tokens: int) -> str:
+    messages = [
+        {"role": "system", "content": REWRITE_SYSTEM_PROMPT},
+        {"role": "user", "content": f"Target length: ~{target_tokens} tokens.\n\nQuery:\n{query}"},
+    ]
+    resp = client.chat_completions(
+        model=client.modeL,
+        messages=messages,
+        temperature=0.0,
+        top_p=1.0,
+        max_tokens=max(32, target_tokens + 16),
+        stream=False,
+        extra_body=None,
+    )
+    text = resp["choices"][0]["message"]["content"].strip()
+    return text
+
+
+async def llm_rewrite(
+    query: str, *, client: "FPTLLMClient", target_tokens: int = QUERY_TARGET
+) -> str:
+    rewritten = await asyncio.to_thread(_rewrite_sync, client, query, target_tokens)
+    return _truncate_to_tokens(rewritten, target_tokens, api_key=None)
+
+
+async def normalize_query(q: str, *, client: "FPTLLMClient") -> str:
+    api_key = os.getenv("VOYAGEAI_KEY")
+    n = count_tokens_total(q, api_key=api_key)
+    if n <= QUERY_SOFT_CAP:
+        return q
+    if n <= QUERY_HARD_CAP:
+        return await llm_rewrite(q, client=client, target_tokens=QUERY_TARGET)
+    raise HTTPException(400, detail="Query quá dài; hãy tóm tắt lại tài liệu")

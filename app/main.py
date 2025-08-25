@@ -52,6 +52,7 @@ def setup_logging() -> None:
             "gemini": {"level": "INFO", "handlers": ["console", "app_daily"], "propagate": False},
             "storage": {"level": "INFO", "handlers": ["console", "app_daily"], "propagate": False},
             "cluster": {"level": "INFO", "handlers": ["console", "app_daily"], "propagate": False},
+            "raptor.retrieve": {"handlers": ["console"], "level": "INFO", "propagate": False},
             "watchfiles": {"level": "WARNING", "handlers": [], "propagate": False},
             "watchfiles.main": {"level": "WARNING", "handlers": [], "propagate": False},
             "uvicorn.error": {
