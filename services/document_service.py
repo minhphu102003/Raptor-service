@@ -3,7 +3,6 @@ import logging
 from infra.embeddings import VoyageEmbeddingClientAsync
 from interfaces_adaptor.repositories import ChunkRepoPg, EmbeddingRepoPg, TreeRepoPg
 from services import (
-    GEMINI_FAST,
     ChunkService,
     EmbeddingService,
     GMMRaptorClusterer,
@@ -46,7 +45,7 @@ class DocumentService:
             res = await uc.execute(cmd)
 
         cce = VoyageEmbeddingClientAsync(model="voyage-context-3")
-        vectors, chunk_texts = await cce.embed_doc_fulltext_rate_limited(
+        vectors, chunk_texts = await cce.embed_doc_fulltext_multi(
             text=file_text,
             chunk_fn=self.container.chunk_fn,
         )

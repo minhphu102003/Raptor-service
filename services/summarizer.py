@@ -54,16 +54,8 @@ class LLMSummarizer:
         enumerated = "\n\n".join([f"[#{i + 1}] {t}" for i, t in enumerate(texts)])
 
         prompt = dedent(f"""\
-        Summarize the docs below.
-        **Keep output under 450 tokens.**
-        Output EXACTLY these sections:
-        Summary: 3–4 sentences.
-        Key facts: 3–6 bullets.
-        Entities: comma list.
-        Topics: 3–6 tags.
-        Evidence: [#i,...]
-        Uncertainties: bullets or "None".
-        Rules: Use only <docs>; keep entities/numbers/dates; note contradictions; if unsure say "unknown".
+        Summarize the following docs into 4–5 sentences.
+        Return PLAIN TEXT ONLY (no labels, no tags, no lists).
         <docs>
         {enumerated}
         </docs>

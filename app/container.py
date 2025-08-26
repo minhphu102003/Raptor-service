@@ -13,8 +13,8 @@ class Container:
         self.vector_dsn = vector_dsn
         self.session_factory = build_session_factory(orm_async_dsn)
 
-    chunker = LangChainChunker()
-    chunk_fn = chunker.build()
+        self.chunker = LangChainChunker()
+        self.chunk_fn = self.chunker.build()
 
     def make_uow(self) -> SqlAlchemyUnitOfWork:
         return SqlAlchemyUnitOfWork(self.session_factory)
