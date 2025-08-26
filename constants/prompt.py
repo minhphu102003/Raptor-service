@@ -4,20 +4,22 @@ LLM_EDGE_PROMPT = ChatPromptTemplate.from_messages(
     [
         (
             "system",
-            "Bạn là bộ sắp xếp ranh giới chunk cho RAG. "
-            "Luật BẮT BUỘC: KHÔNG ĐƯỢC THÊM THÔNG TIN MỚI. "
-            "Chỉ được dùng lại, ghép, rút gọn các từ/cụm từ CÓ TRONG CỬA SỔ đưa vào. "
-            "Nếu không thể viết lại một câu vì thiếu dữ kiện, ghi null.",
+            "You are a chunk-boundary organizer for RAG. "
+            "MANDATORY RULE: DO NOT ADD NEW INFORMATION. "
+            "You may only reuse, combine, or shorten words/phrases that EXIST IN THE PROVIDED WINDOW. "
+            "If you cannot rewrite a sentence due to insufficient evidence, return null.",
         ),
         (
             "human",
-            "Cửa sổ ranh giới giữa A và B (mỗi bên tối đa 5 câu):\n\n"
-            "A(tail):\n{a_tail}\n\nB(head):\n{b_head}\n\n"
-            "Yêu cầu:\n"
-            "1) Quyết định số câu chuyển từ A→B (0..5) và B→A (0..5).\n"
-            "2) Nếu câu CUỐI của A bị cắt, viết lại câu đó CHỈ dùng từ trong cửa sổ; nếu không cần, để null.\n"
-            "3) Nếu câu ĐẦU của B bị cắt, viết lại câu đó CHỈ dùng từ trong cửa sổ; nếu không cần, để null.\n\n"
-            "Trả về JSON đúng schema:\n"
+            "Boundary window between A and B (each side up to 5 sentences):\n\n"
+            "A (tail):\n{a_tail}\n\nB (head):\n{b_head}\n\n"
+            "Requirements:\n"
+            "1) Decide how many sentences to move from A→B (0..5) and from B→A (0..5).\n"
+            "2) If the LAST sentence of A is cut, rewrite that sentence USING ONLY words from the window; "
+            "   if not needed, set it to null.\n"
+            "3) If the FIRST sentence of B is cut, rewrite that sentence USING ONLY words from the window; "
+            "   if not needed, set it to null.\n\n"
+            "Return STRICT JSON matching this schema:\n"
             '{{"move_a_to_b": <int 0..5>, "move_b_to_a": <int 0..5>, '
             '"rewrite_a_last": <string|null>, "rewrite_b_first": <string|null>}}',
         ),

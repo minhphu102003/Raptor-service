@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 import json
 import re
-from typing import Any, Dict, List
+from typing import Dict, List
 
 from langchain_core.output_parsers import StrOutputParser
-from langchain_openai import ChatOpenAI
 from underthesea import sent_tokenize as vn_sent_tokenize
 
 from constants.prompt import LLM_EDGE_PROMPT
+from services.openai_chat.openai_chat_service import get_edge_decider_llm
 
 try:
 
@@ -38,26 +38,26 @@ def _window_edges(a: str, b: str, k: int = 5) -> Dict[str, List[str]]:
     }
 
 
+def enforce_subset(rewrite: str | None, window_tokens: set[str]) -> str | None:
+    if not rewrite:
+        return None
+    toks = set(re.findall(r"\w+|\S", rewrite.lower()))
+    return rewrite if toks.issubset(window_tokens) else None
+
+
 def llm_edge_fix_and_reallocate(
     chunks: List[str],
     llm=None,
     edge_limit: int = 5,
-    max_chars_per_chunk: int = 2000,
+    max_chars_per_chunk: int = 8000,
     max_passes: int = 2,
 ) -> List[str]:
     """
     Lặp qua các ranh giới (i, i+1), cho LLM quyết định chuyển <=5 câu mỗi mép
     và (nếu cần) viết lại câu đầu/cuối nhưng KHÔNG thêm fact.
     """
-    llm = llm or ChatOpenAI(temperature=0)
+    llm = llm or get_edge_decider_llm()
     decide = LLM_EDGE_PROMPT | llm | StrOutputParser()
-
-    def enforce_subset(rewrite: str | None, window_tokens: set[str]) -> str | None:
-        if not rewrite:
-            return None
-        # Kiểm tra tối giản: từ trong rewrite phải là con của window_tokens
-        toks = set(re.findall(r"\w+|\S", rewrite.lower()))
-        return rewrite if toks.issubset(window_tokens) else None
 
     passes = 0
     out = chunks[:]
@@ -140,7 +140,6 @@ def llm_edge_fix_and_reallocate(
                             changed = True
 
             out[i], out[i + 1] = A, B
-            # Dọn chunk rỗng
             out = [c for c in out if c.strip()]
             i += 1
 

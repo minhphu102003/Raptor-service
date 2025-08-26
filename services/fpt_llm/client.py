@@ -100,7 +100,16 @@ class FPTLLMClient:
                 "FPTLLMClient.model is not set. Pass model=... in __init__ or set client.model before calling summarize()."
             )
         messages = [
-            {"role": "system", "content": "You are a concise, faithful summarizer."},
+            {
+                "role": "system",
+                "content": """
+                You are a concise, faithful summarizer.
+                Output ONLY the final summary as plain text (no headings, no labels, no lists, no JSON/HTML/Markdown).
+                Do NOT include chain-of-thought or reasoning markers (e.g., <think>...</think>).
+                If information is uncertain, write “unknown”.
+                Preserve factual entities, numbers, and dates from the source.
+             """,
+            },
             {"role": "user", "content": prompt},
         ]
 
