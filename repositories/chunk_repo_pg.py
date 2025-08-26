@@ -1,9 +1,12 @@
 from typing import Iterable
 
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from db.models import ChunkORM
+from db.models.documents import DocumentORM
 
 
 class ChunkRepoPg:
@@ -30,3 +33,13 @@ class ChunkRepoPg:
         )
         await self.session.execute(stmt)
         return len(rows)
+
+    async def list_by_dataset_join(self, dataset_id: str):
+        stmt = (
+            select(ChunkORM.id, ChunkORM.text)
+            .join(ChunkORM.document)
+            .where(DocumentORM.dataset_id == dataset_id)
+            .order_by(ChunkORM.doc_id, ChunkORM.idx)
+        )
+        res = await self.session.execute(stmt)
+        return res.all()

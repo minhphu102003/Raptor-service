@@ -67,42 +67,42 @@ class LangChainChunker(ChunkFnProvider):
 
             # TODO: uncomment this comment below if just using naive chunking
 
-            # return chunks
+            return chunks
 
             # 2) Edge refine bằng LLM
-            try:
-                llm = self.llm or get_edge_decider_llm()
-                llm_name = getattr(llm, "model_name", getattr(llm, "model", "LLM"))
-                logger.info(
-                    "Chunker: refine_start llm=%s edge_limit=%d passes=%d",
-                    llm_name,
-                    self.edge_limit,
-                    self.max_passes,
-                )
+            # try:
+            #     llm = self.llm or get_edge_decider_llm()
+            #     llm_name = getattr(llm, "model_name", getattr(llm, "model", "LLM"))
+            #     logger.info(
+            #         "Chunker: refine_start llm=%s edge_limit=%d passes=%d",
+            #         llm_name,
+            #         self.edge_limit,
+            #         self.max_passes,
+            #     )
 
-                refined = llm_edge_fix_and_reallocate(
-                    chunks,
-                    llm=llm,
-                    edge_limit=self.edge_limit,
-                    max_chars_per_chunk=self.max_chars_per_chunk,
-                    max_passes=self.max_passes,
-                )
-            except Exception:
-                logger.exception("Chunker: refine_failed — fallback to naive chunks")
-                refined = chunks
+            #     refined = llm_edge_fix_and_reallocate(
+            #         chunks,
+            #         llm=llm,
+            #         edge_limit=self.edge_limit,
+            #         max_chars_per_chunk=self.max_chars_per_chunk,
+            #         max_passes=self.max_passes,
+            #     )
+            # except Exception:
+            #     logger.exception("Chunker: refine_failed — fallback to naive chunks")
+            #     refined = chunks
 
-            refined = [c for c in refined if c.strip()]
-            r_lens = [len(c) for c in refined]
+            # refined = [c for c in refined if c.strip()]
+            # r_lens = [len(c) for c in refined]
 
-            logger.info(
-                "Chunker: refined_len_stats min=%d p50=%d p90=%d max=%d first='%s' last='%s'",
-                min(r_lens),
-                sorted(r_lens)[len(r_lens) // 2],
-                sorted(r_lens)[int(0.9 * len(r_lens))],
-                max(r_lens),
-                refined[0],
-                refined[-1],
-            )
-            return refined
+            # logger.info(
+            #     "Chunker: refined_len_stats min=%d p50=%d p90=%d max=%d first='%s' last='%s'",
+            #     min(r_lens),
+            #     sorted(r_lens)[len(r_lens) // 2],
+            #     sorted(r_lens)[int(0.9 * len(r_lens))],
+            #     max(r_lens),
+            #     refined[0],
+            #     refined[-1],
+            # )
+            # return refined
 
         return chunk_fn

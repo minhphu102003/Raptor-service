@@ -1,6 +1,7 @@
 from typing import Optional
 
-from sqlalchemy import exists, select
+import sqlalchemy as sa
+from sqlalchemy import exists, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import selectinload
 
@@ -72,7 +73,12 @@ class DocumentRepoPg(IDocumentRepository):
         )
         await s.execute(stmt)
 
-    # async def dataset_exists(self, dataset_id: str) -> bool:
-    #     s = self.uow.session
-    #     stmt = select(exists().where(DocumentORM.dataset_id == dataset_id))
-    #     return (await s.execute(stmt)).scalar()
+    async def dataset_has_more_than_one(self, dataset_id: str) -> bool:
+        s = self.uow.session
+        stmt = (
+            sa.select(func.count())
+            .select_from(DocumentORM)
+            .where(DocumentORM.dataset_id == dataset_id)
+        )
+        cnt = await s.scalar(stmt)
+        return (cnt or 0) > 1

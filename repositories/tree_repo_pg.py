@@ -55,3 +55,8 @@ class TreeRepoPg:
         )
         res = await self.session.execute(q)
         return [(r[0], r[1]) for r in res.all()]
+
+    async def delete_by_dataset(self, dataset_id: str) -> list[str]:
+        stmt = sa.delete(TreeORM).where(TreeORM.dataset_id == dataset_id).returning(TreeORM.tree_id)
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
