@@ -12,9 +12,6 @@ def parse_model_ref(s: str) -> ModelRef:
     return ModelRef(model=parts[0], factory=parts[1] if len(parts) == 2 else None)
 
 
-from dataclasses import dataclass
-
-
 @dataclass
 class Creds:
     openai: str | None = None
