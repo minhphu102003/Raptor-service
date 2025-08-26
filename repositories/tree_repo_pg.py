@@ -4,7 +4,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from infra.db.models import TreeEdgeORM, TreeNodeChunkORM, TreeNodeORM, TreeORM
+from db.models import TreeEdgeORM, TreeNodeChunkORM, TreeNodeORM, TreeORM
 
 
 class TreeRepoPg:

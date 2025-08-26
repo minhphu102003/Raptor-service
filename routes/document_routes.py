@@ -6,16 +6,15 @@ from fastapi import APIRouter, Depends, File, Form, Header, Request, UploadFile,
 from openai import BaseModel
 
 from constants.enum import SummarizeModel
-from infra.embeddings.voyage_client import VoyageEmbeddingClientAsync
-from interfaces_adaptor.http.controllers.document_controller import DocumentController
+from controllers.document_controller import DocumentController
 from interfaces_adaptor.http.dependencies.files import require_markdown_file
+from repositories.retrieval_repo import RetrievalRepo
 from services.embedding_query_service import EmbeddingService
 from services.fpt_llm.client import FPTLLMClient
 from services.query_rewrite_service import QueryRewriteService
 from services.retrieval_service import RetrievalService
+from services.voyage.voyage_client import VoyageEmbeddingClientAsync
 from utils.json import parse_json_opt
-
-from ...repositories.retrieval_repo import RetrievalRepo
 
 router = APIRouter()
 

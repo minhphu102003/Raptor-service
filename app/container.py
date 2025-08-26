@@ -1,9 +1,9 @@
 from app.config import settings
-from infra.chunking.langchain_chunker import LangChainChunker
-from infra.db.session import build_session_factory
-from infra.uow.sqlalchemy_uow import SqlAlchemyUnitOfWork
+from db.session import build_session_factory
 from interfaces_adaptor.gateways.file_source import FileSourceHybrid
-from interfaces_adaptor.repositories.document_repo_pg import DocumentRepoPg
+from repositories.document_repo_pg import DocumentRepoPg
+from services.langchain.langchain_chunker import LangChainChunker
+from uow.sqlalchemy_uow import SqlAlchemyUnitOfWork
 
 
 class Container:

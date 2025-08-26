@@ -1,17 +1,18 @@
 import logging
 
-from infra.embeddings import VoyageEmbeddingClientAsync
-from interfaces_adaptor.repositories import ChunkRepoPg, EmbeddingRepoPg, TreeRepoPg
+from repositories import ChunkRepoPg, EmbeddingRepoPg, TreeRepoPg
 from services import (
     ChunkService,
     EmbeddingService,
     GMMRaptorClusterer,
     LLMSummarizer,
+    PersistDocumentCmd,
+    PersistDocumentUseCase,
     RaptorBuildService,
     VoyageEmbedderAdapter,
     make_llm,
 )
-from usecases import PersistDocumentCmd, PersistDocumentUseCase
+from services.voyage import VoyageEmbeddingClientAsync
 from utils import gen_doc_id, resolve_dataset_id
 from utils.lll_sumary import get_llm_from_payload
 

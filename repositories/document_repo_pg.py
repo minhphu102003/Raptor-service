@@ -4,7 +4,7 @@ from sqlalchemy import exists, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import selectinload
 
-from infra.db.models import ChunkORM, DocumentORM
+from db.models import ChunkORM, DocumentORM
 from interfaces_adaptor.ports import IDocumentRepository, IUnitOfWork
 
 

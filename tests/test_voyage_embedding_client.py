@@ -6,7 +6,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 import voyageai
 
-from infra.embeddings.voyage_client import VoyageEmbeddingClientAsync
+from services.voyage.voyage_client import VoyageEmbeddingClientAsync
 
 
 def make_chunk_fn() -> "Callable[[str], list[str]]":
