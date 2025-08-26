@@ -1,5 +1,5 @@
-from infra.embeddings.openai_embeddings import call_openai_embeddings
 from interfaces_adaptor.ports import IEmbedder
+from services.openai_chat.openai_embeddings import call_openai_embeddings
 
 
 class OpenAIEmbedder(IEmbedder):

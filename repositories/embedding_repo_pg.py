@@ -3,7 +3,7 @@ from typing import Iterable
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from infra.db.models import EmbeddingORM
+from db.models import EmbeddingORM
 
 
 class EmbeddingRepoPg:

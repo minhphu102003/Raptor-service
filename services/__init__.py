@@ -3,6 +3,7 @@ from .chunk_service import ChunkService
 from .clusterer import GMMRaptorClusterer
 from .embedder_adapter import VoyageEmbedderAdapter
 from .embedding_service import EmbeddingService
+from .persist_document import PersistDocumentCmd, PersistDocumentUseCase
 from .summarizer import GEMINI_FAST, LLMSummarizer, make_llm
 
 __all__ = [
@@ -14,4 +15,6 @@ __all__ = [
     "make_llm",
     "GEMINI_FAST",
     "GMMRaptorClusterer",
+    "PersistDocumentCmd",
+    "PersistDocumentUseCase",
 ]

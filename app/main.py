@@ -7,7 +7,7 @@ from fastapi import FastAPI
 
 from app.config import settings
 from app.container import Container
-from interfaces_adaptor.http.routes.root import root_router
+from routes.root import root_router
 
 
 def setup_logging() -> None:

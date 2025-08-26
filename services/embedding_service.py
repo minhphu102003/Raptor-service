@@ -2,8 +2,8 @@ from typing import Any, Dict, List, Literal, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from infra.db.models import EmbeddingOwnerType
-from interfaces_adaptor.repositories.embedding_repo_pg import EmbeddingRepoPg
+from db.models import EmbeddingOwnerType
+from repositories.embedding_repo_pg import EmbeddingRepoPg
 
 
 class EmbeddingService:

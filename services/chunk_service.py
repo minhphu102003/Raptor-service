@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from interfaces_adaptor.repositories.chunk_repo_pg import ChunkRepoPg
+from repositories.chunk_repo_pg import ChunkRepoPg
 
 
 class ChunkService:
