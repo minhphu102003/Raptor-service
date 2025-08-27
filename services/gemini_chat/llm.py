@@ -1,6 +1,6 @@
 import asyncio
 from textwrap import dedent
-from typing import Any, Optional
+from typing import Any, AsyncIterator, Optional
 
 from google.genai import types
 from tenacity import retry, stop_after_attempt, wait_random_exponential
@@ -114,3 +114,58 @@ class GeminiChatLLM:
             await asyncio.sleep(wait_time)
 
         return resp
+
+    async def generate(
+        self,
+        prompt: str,
+        *,
+        max_tokens: int = 4000,
+        temperature: float = 0.3,
+        clean: bool = False,
+    ) -> str:
+        """
+        Non-stream: trả full text, dùng lại pipeline log + _safe_generate hiện có.
+        """
+        params = GenerateParams(max_tokens=max_tokens, temperature=temperature)
+        pre_tokens = await self._safe_count_tokens(prompt)
+        self._log_request(prompt, pre_tokens, params)
+
+        config = self._build_config(params)
+        async with Timer() as t:
+            resp = await self._safe_generate(prompt, config)
+
+        text = parse_text(resp)  # bạn đã có parser thống nhất
+        if clean:
+            text = clean_summary(text)
+
+        self._log_usage(resp, t.ms, text)
+        self._ensure_non_empty(text, resp, t.ms)
+        return text
+
+    async def astream(
+        self,
+        prompt: str,
+        *,
+        max_tokens: int = 4000,
+        temperature: float = 0.3,
+    ) -> AsyncIterator[str]:
+        """
+        Stream: yield từng mẩu text khi model sinh ra (SSE của google-genai).
+        """
+        params = GenerateParams(max_tokens=max_tokens, temperature=temperature)
+        pre_tokens = await self._safe_count_tokens(prompt)
+        self._log_request(prompt, pre_tokens, params)
+
+        cfg = self._build_config(params)
+
+        try:
+            async for chunk in self.client.aio.models.generate_content_stream(
+                model=self.model,
+                contents=prompt,
+                config=cfg,
+            ):
+                text_piece = getattr(chunk, "text", None)
+                if text_piece:
+                    yield text_piece
+        finally:
+            pass
