@@ -8,8 +8,12 @@ from constants.enum import SummarizeModel
 from controllers.document_controller import DocumentController
 from interfaces_adaptor.http.dependencies.files import require_markdown_file
 from repositories.retrieval_repo import RetrievalRepo
+from services.answer_service import AnswerService
 from services.embedding_query_service import EmbeddingService
 from services.fpt_llm.client import FPTLLMClient
+from services.gemini_chat.llm import GeminiChatLLM
+from services.model_registry import ModelRegistry
+from services.openai_chat.openai_client_async import OpenAIClientAsync
 from services.query_rewrite_service import QueryRewriteService
 from services.retrieval_service import RetrievalService
 from services.voyage.voyage_client import VoyageEmbeddingClientAsync
@@ -23,6 +27,17 @@ _VOY = VoyageEmbeddingClientAsync(model="voyage-context-3", out_dim=1024)
 _REWRITE = QueryRewriteService(fpt_client=_FPT)
 _EMBED = EmbeddingService(voyage_client_async=_VOY)
 _SERVICE = RetrievalService(rewrite_svc=_REWRITE, embed_svc=_EMBED)
+_GEMINI = GeminiChatLLM(model="gemini-2.5-flash")
+_OPENAI = OpenAIClientAsync(model="gpt-4o-mini")
+
+_model_registry = ModelRegistry(
+    fpt_client=_FPT,
+    openai_client=_OPENAI,
+    gemini_client=_GEMINI,
+    anthropic_client=None,
+)
+
+_ANSWER = AnswerService(retrieval_svc=_SERVICE, model_registry=_model_registry)
 
 
 @router.post("/ingest-markdown")
@@ -99,4 +114,23 @@ async def retrieve(body: RetrieveBody, request: Request):
     async with uow:
         repo = RetrievalRepo(uow)
         result = await _SERVICE.retrieve(body, repo=repo)
+        return result
+
+
+class AnswerBody(RetrieveBody):
+    answer_model: Literal["DeepSeek-V3", "GPT-4o-mini", "Gemini-2.5-Flash", "Claude-3.5-Haiku"] = (
+        "DeepSeek-V3"
+    )
+    temperature: float = 0.3
+    max_tokens: int = 4000
+    stream: bool = False
+
+
+@router.post("/answer")
+async def answer_query(body: AnswerBody, request: Request):
+    container = request.app.state.container
+    uow = container.make_uow()
+    async with uow:
+        repo = RetrievalRepo(uow)
+        result = await _ANSWER.answer(body, repo=repo)
         return result

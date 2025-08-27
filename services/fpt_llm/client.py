@@ -3,8 +3,9 @@ import json
 import os
 import threading
 import time
-from typing import Any, Dict, Iterator, List, Optional, Union
+from typing import Any, AsyncIterator, Dict, Iterator, List, Optional, Union
 
+import aiohttp
 import requests
 
 from utils.http import parse_retry_after
@@ -55,6 +56,7 @@ class FPTLLMClient:
         )
         self.model = model
         self._sem = threading.BoundedSemaphore(value=max(1, int(max_concurrent)))
+        self._asem = asyncio.Semaphore(max(1, int(max_concurrent)))
 
     def chat_completions(
         self,
@@ -240,3 +242,103 @@ class FPTLLMClient:
                 delta=delta_text,
                 raw=payload,
             )
+
+    async def generate(self, *, prompt: str, temperature: float, max_tokens: int) -> str:
+        """Gọi non-stream và trả text đã ghép."""
+        async with self._asem:
+            payload = {
+                "model": self.model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            }
+            url = f"{self.base_url}/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            }
+            timeout = aiohttp.ClientTimeout(total=self.timeout)
+            async with aiohttp.ClientSession(timeout=timeout) as sess:
+                async with sess.post(url, headers=headers, json=payload) as resp:
+                    txt = await resp.text()
+                    if resp.status >= 400:
+                        raise RuntimeError(f"FPT LLM error {resp.status}: {txt}")
+                    data = json.loads(txt)
+
+            return self._extract_full_text(data)
+
+    async def astream(
+        self, *, prompt: str, temperature: float, max_tokens: int
+    ) -> AsyncIterator[str]:
+        """Gọi stream=True và yield từng delta text."""
+        async with self._asem:
+            payload = {
+                "model": self.model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "stream": True,
+            }
+            url = f"{self.base_url}/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            }
+            timeout = aiohttp.ClientTimeout(total=self.timeout)
+            async with aiohttp.ClientSession(timeout=timeout) as sess:
+                async with sess.post(url, headers=headers, json=payload) as resp:
+                    if resp.status >= 400:
+                        err = await resp.text()
+                        raise RuntimeError(f"FPT LLM stream error {resp.status}: {err}")
+
+                    async for raw in resp.content:
+                        line = raw.decode("utf-8").strip()
+                        if not line:
+                            continue
+                        if not line.startswith("data:"):
+                            continue
+                        data_str = line[len("data:") :].strip()
+                        if data_str == "[DONE]":
+                            break
+                        try:
+                            event = json.loads(data_str)
+                        except json.JSONDecodeError:
+                            continue
+                        delta = self._extract_delta_text(event)
+                        if delta:
+                            yield delta
+
+    @staticmethod
+    def _extract_full_text(data: Dict[str, Any]) -> str:
+        """
+        Hỗ trợ các biến thể OpenAI-compatible:
+        - choices[0].message.content (chuẩn chat)
+        - hoặc choices[0].text (nếu provider trả kiểu completion cổ)
+        - hoặc ghép từ choices[].delta.* nếu provider đã "pre-merge"
+        """
+        try:
+            ch0 = (data.get("choices") or [])[0]
+        except Exception:
+            return ""
+        msg = ch0.get("message") or {}
+        if isinstance(msg, dict) and "content" in msg:
+            return msg.get("content") or ""
+        if "text" in ch0:
+            return ch0.get("text") or ""
+        if "delta" in ch0 and isinstance(ch0["delta"], dict):
+            return ch0["delta"].get("content") or ""
+        return ""
+
+    @staticmethod
+    def _extract_delta_text(event: Dict[str, Any]) -> str:
+        """
+        Chuẩn OpenAI SSE: event['choices'][0]['delta']['content']
+        Một số provider có thể dùng khóa khác; ta ưu tiên delta.content.
+        """
+        choices = event.get("choices")
+        if not choices:
+            return ""
+        delta = choices[0].get("delta") or {}
+        if isinstance(delta, dict):
+            return delta.get("content") or ""
+        return choices[0].get("text") or ""
