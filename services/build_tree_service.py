@@ -2,9 +2,12 @@ import asyncio
 import logging
 import time
 from typing import Any, Dict, List, Tuple
-import uuid
 
 from sqlalchemy.exc import DBAPIError, IntegrityError
+
+from utils.chunking import aggregate_chunks
+from utils.graph_rows import build_embed_row, build_leaf_row, build_summary_node_row
+from utils.render_id import make_leaf_id, make_node_id
 
 logger = logging.getLogger("raptor")
 
@@ -30,16 +33,12 @@ class RaptorBuildService:
     ) -> str:
         params = params or {}
         tree_id = await self._init_tree(doc_id, dataset_id, params)
-
         leaf_ids, node2chunk_ids = await self._prepare_leaves(tree_id, chunk_items)
-
         rpm_limit = int(params.get("rpm_limit", 3))
         min_interval = 60.0 / max(1, rpm_limit)
         self._ensure_last_ts(min_interval)
-
         llm_conc = int(params.get("llm_concurrency", 3))
         sem = asyncio.Semaphore(max(1, llm_conc))
-
         current_ids, current_vecs, current_texts = (
             leaf_ids,
             list(vectors),
@@ -48,14 +47,18 @@ class RaptorBuildService:
         level = 0
 
         while len(current_ids) > 1:
-            t0 = time.perf_counter()
-
+            prev_n = len(current_ids)
             groups = self.clusterer.fit_predict(
                 current_vecs,
                 min_k=int(params.get("min_k", 2)),
                 max_k=int(params.get("max_k", 50)),
                 verbose=True,
             )
+            groups = [sorted(set(g)) for g in groups if g]
+            if not groups or len(groups) >= prev_n or all(len(g) == 1 for g in groups):
+                groups = [list(range(prev_n))]
+                logger.info("[RAPTOR] forcing merge: prev_n=%d -> 1 cluster (stall guard)", prev_n)
+
             logger.info(
                 "[RAPTOR] L%d clusters=%d sizes=%s score=%s method=%s",
                 level + 1,
@@ -74,14 +77,6 @@ class RaptorBuildService:
             current_ids, current_vecs, current_texts = await self._persist_level(
                 tree_id, dataset_id, group_pack, summaries, vecs, node2chunk_ids, level
             )
-
-            logger.info(
-                "[RAPTOR] L%d commit nodes=%d edges=%d ms=%.1f",
-                level + 1,
-                len(current_ids),
-                len(current_ids) - 1,
-                (time.perf_counter() - t0) * 1e3,
-            )
             level += 1
 
         logger.info("[RAPTOR] done tree_id=%s levels=%d", tree_id, level)
@@ -90,9 +85,6 @@ class RaptorBuildService:
     async def _init_tree(self, doc_id: str, dataset_id: str, params: Dict[str, Any]) -> str:
         tree_id = await self.tree_repo.create_tree(
             doc_id=doc_id, dataset_id=dataset_id, params=params
-        )
-        logger.info(
-            "[RAPTOR] create_tree tree_id=%s doc_id=%s dataset_id=%s", tree_id, doc_id, dataset_id
         )
         return tree_id
 
@@ -103,19 +95,11 @@ class RaptorBuildService:
         chunk2leaf, node2chunk_ids = {}, {}
 
         for i, it in enumerate(chunk_items):
-            leaf_id = f"{tree_id}::leaf::{i:06d}"
+            leaf_id = make_leaf_id(tree_id=tree_id, idx=i)
             leaf_rows.append(
-                {
-                    "node_id": leaf_id,
-                    "tree_id": tree_id,
-                    "level": 0,
-                    "kind": "leaf",
-                    "text": it["text"],
-                    "meta": {"chunk_id": it["id"]},
-                }
+                build_leaf_row(leaf_id=leaf_id, tree_id=tree_id, text=it["text"], chunk_id=it["id"])
             )
             link_rows.append({"node_id": leaf_id, "chunk_id": it["id"], "rank": 0})
-            logger.info("[RAPTOR] chunk_id=%s text=%s", it["id"], it["text"])
             leaf_ids.append(leaf_id)
             chunk2leaf[it["id"]] = leaf_id
             node2chunk_ids[leaf_id] = [it["id"]]
@@ -142,10 +126,7 @@ class RaptorBuildService:
             member_ids = [current_ids[i] for i in idxs]
             member_texts = [current_texts[i] for i in idxs]
             group_pack.append((gi, member_ids, member_texts))
-            tasks.append(_summarize(member_texts, int(params.get("max_tokens", 4048))))
-            logger.debug(
-                "[RAPTOR] L%d G%d members=%d ids=%s", level + 1, gi, len(member_ids), member_ids
-            )
+            tasks.append(_summarize(member_texts, int(params.get("max_tokens", 8000))))
 
         summaries = await asyncio.gather(*tasks)
         return summaries, group_pack
@@ -160,12 +141,6 @@ class RaptorBuildService:
 
         self._last_embed_ts = time.perf_counter()
         vecs = await self.embedder.embed_docs(texts)
-        logger.info(
-            "[RAPTOR] L%d batch-embed n=%d ms=%.1f",
-            level + 1,
-            len(texts),
-            (time.perf_counter() - self._last_embed_ts) * 1e3,
-        )
         return vecs
 
     async def _persist_level(
@@ -182,23 +157,17 @@ class RaptorBuildService:
         node_ids_for_level = []
 
         for (gi, member_ids, member_texts), summary, vec in zip(group_pack, summaries, vecs):
-            node_id = f"{tree_id}::L{level + 1}::{gi}::{uuid.uuid4().hex[:6]}"
+            node_id = make_node_id(tree_id=tree_id, level=level + 1, group_idx=gi)
             node_ids_for_level.append(node_id)
-
             node_rows.append(
-                {
-                    "node_id": node_id,
-                    "tree_id": tree_id,
-                    "level": level + 1,
-                    "kind": "summary",
-                    "text": summary,
-                    "meta": {},
-                }
+                build_summary_node_row(
+                    node_id=node_id, tree_id=tree_id, level=level + 1, summary=summary
+                )
             )
 
             edge_rows.extend([{"parent_id": node_id, "child_id": cid} for cid in member_ids])
 
-            agg_chunk_ids = self._aggregate_chunks(member_ids, node2chunk_ids)
+            agg_chunk_ids = aggregate_chunks(member_ids, node2chunk_ids)
             link_rows.extend(
                 [
                     {"node_id": node_id, "chunk_id": cid, "rank": rank}
@@ -208,53 +177,31 @@ class RaptorBuildService:
             node2chunk_ids[node_id] = agg_chunk_ids
 
             emb_rows.append(
-                {
-                    "id": f"tree_node::{node_id}",
-                    "dataset_id": dataset_id,
-                    "owner_type": "tree_node",
-                    "owner_id": node_id,
-                    "model": self.embedder.model_name,
-                    "dim": self.embedder.dim,
-                    "v": vec,
-                    "meta": {"tree_id": tree_id, "level": level + 1},
-                }
+                build_embed_row(
+                    node_id=node_id,
+                    dataset_id=dataset_id,
+                    model=self.embedder.model_name,
+                    dim=self.embedder.dim,
+                    v=vec,
+                    level=level + 1,
+                    tree_id=tree_id,
+                )
             )
 
         if len(node_ids_for_level) == 1:
             node_rows[0]["kind"] = "root"
             node_rows[0]["meta"]["is_root"] = True
-            logger.info(
-                "[RAPTOR] L%d -> identified root node: %s", level + 1, node_ids_for_level[0]
-            )
 
         try:
             await self.tree_repo.add_nodes(tree_id, node_rows)
             await self.tree_repo.add_edges(tree_id, edge_rows)
             await self.tree_repo.link_node_chunks(link_rows)
             await self.emb_repo.bulk_upsert(emb_rows)
-            logger.info(
-                "[RAPTOR] L%d persist OK nodes=%d edges=%d links=%d embeds=%d",
-                level + 1,
-                len(node_rows),
-                len(edge_rows),
-                len(link_rows),
-                len(emb_rows),
-            )
         except (IntegrityError, DBAPIError, Exception):
             logger.exception("[RAPTOR] L%d persist FAILED tree_id=%s", level + 1, tree_id)
             raise
 
         return node_ids_for_level, vecs, summaries
-
-    @staticmethod
-    def _aggregate_chunks(member_ids: List[str], node2chunk_ids: Dict[str, List[str]]) -> List[str]:
-        seen, agg = set(), []
-        for mid in member_ids:
-            for cid in node2chunk_ids[mid]:
-                if cid not in seen:
-                    seen.add(cid)
-                    agg.append(cid)
-        return agg
 
     def _ensure_last_ts(self, min_interval: float):
         if not hasattr(self, "_last_embed_ts"):
