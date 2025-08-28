@@ -92,7 +92,40 @@ CHK -- "No → done" --> OUT["Finish build<br/>(persist final tree & index)"]
 
 ```
 
-### 1.2 Sơ đồ trình tự (Async build)
+### 1.2 Sơ đồ dòng truy vấn
+
+```mermaid
+flowchart TD
+  A["POST /v1/retrieve (dataset_id, query, mode, top_k, expand_k, levels_cap, use_reranker, byok_key)"] --> N["Normalize + sanitize query"]
+  N --> E["Embed query (Voyage context-3, dim=1024)"]
+  E --> M{"mode ?"}
+
+  %% Collapsed
+  M --|collapsed|--> C0["Select candidate nodes across levels<br/>(respect levels_cap; include leaves+summaries)"]
+  C0 --> C1["Vector search via pgvector (cosine_distance)<br/>top_k per chosen level(s)"]
+  C1 --> C2["If a hit is a summary node → expand children<br/>up to expand_k or until leaf"]
+  C2 --> C3["Aggregate & deduplicate by chunk_id/doc_id"]
+  C3 --> C4["(Optional) Rerank cross-encoder / API<br/>use_reranker=True → reorder"]
+  C4 --> R["Return contexts[] with scores + metadata"]
+
+  %% Traversal
+  M --|traversal|--> T0["Pick root/community nodes (highest level)"]
+  T0 --> T1["Vector match on roots → top_k_roots"]
+  T1 --> T2["Beam search down the tree<br/>per level keep expand_k children by sim"]
+  T2 --> T3{"Reached levels_cap or leaves?"}
+  T3 --|No|--> T2
+  T3 --|Yes|--> T4["Collect leaf chunks (+optionally parent summaries)"]
+  T4 --> T5["(Optional) Rerank"]
+  T5 --> R
+
+  %% Answering (separate endpoint)
+  R --> A0["POST /v1/answer"]
+  A0 --> A1["Context window packing (budget by max_tokens)"]
+  A1 --> A2["LLM (DeepSeek-V3 / GPT-4o-mini / Claude-Haiku / Gemini-Flash)<br/>temperature, stream"]
+  A2 --> A3["Return answer + citations (chunk_ids)"]
+```
+
+### 1.3 Sơ đồ trình tự (Async build)
 
 ```mermaid
 sequenceDiagram
@@ -154,6 +187,52 @@ sequenceDiagram
     end
 ```
 
+```mermaid
+sequenceDiagram
+  autonumber
+  participant C as Client
+  participant A as API (FastAPI)
+  participant DB as Supabase (Postgres/pgvector)
+  participant EMB as Voyage embeddings
+  participant RER as Reranker (optional)
+
+  C->>A: POST /v1/retrieve (dataset_id, query, mode, top_k, expand_k, levels_cap, use_reranker, reranker_model, byok_voyage_api_key)
+  A->>A: Normalize query and defaults
+  A->>DB: SELECT max(level) FROM raptor_nodes WHERE dataset_id = ...
+  DB-->>A: max_level
+  A->>EMB: Embed query (voyage-context-3, dim 1024)
+  EMB-->>A: qvec (float[])
+
+  alt mode == collapsed
+    A->>DB: Vector search raptor_nodes at levels [0..cap]
+    DB-->>A: hits (leaf + summary) with distance
+    A->>A: Convert to similarity = 1 - distance
+    A->>A: Attach score
+    A->>DB: For each summary, fetch leaves (expand_k per parent)
+    DB-->>A: expanded_leaf_candidates
+    A->>A: Aggregate, deduplicate, sort by score desc
+  else mode == traversal
+    A->>DB: Search roots at level = cap
+    DB-->>A: roots (frontier)
+    loop level = cap-1 down to 0
+      A->>DB: Children for frontier (expand_k per parent)
+      DB-->>A: children with distance
+      A->>A: Convert to similarity and keep beam size = top_k
+      A->>A: Collect leaves
+    end
+    A->>A: If no leaves, fallback to top_k frontier
+  end
+
+  opt use_reranker == true
+    A->>RER: Rerank(query, candidates, model)
+    RER-->>A: order
+    A->>A: Reorder candidates
+  end
+
+  A-->>C: 200 OK (results: id, doc_id, level, is_leaf, text, score, ...)
+
+```
+
 ---
 
 ## 2) API – hợp đồng I/O
@@ -180,24 +259,17 @@ sequenceDiagram
 
 ## Form fields
 
-| Trường                   | Kiểu                                         | Bắt buộc | Mặc định   | Ghi chú                             |
-| ------------------------ | -------------------------------------------- | -------: | ---------- | ----------------------------------- |
-| `file`                   | `UploadFile` (.md)                           |       ✔︎ | –          | Chỉ nhận **Markdown**               |
-| `dataset_id`             | `string`                                     |       ✔︎ | –          | ID bộ dữ liệu                       |
-| `source`                 | `string`                                     |       ✖︎ | –          | Nguồn gốc tài liệu (URL, path, …)   |
-| `tags`                   | `string[]`                                   |       ✖︎ | –          | Gửi lặp nhiều field `tags` nếu cần  |
-| `extra_meta`             | `string` (JSON)                              |       ✖︎ | –          | JSON encode, vd: `{"author":"..."}` |
-| `build_tree`             | `bool`                                       |       ✖︎ | `true`     | `true` → build RAPTOR tree          |
-| `summary_llm`            | `string`/enum                                |       ✖︎ | –          | Model tóm tắt (vd: `deepseek_v3`)   |
-| `vector_index`           | `string`                                     |       ✖︎ | –          | Tên/khoá cấu hình index vector      |
-| `upsert_mode`            | `"upsert" \| "replace" \| "skip_duplicates"` |       ✖︎ | `"upsert"` | Chiến lược ghi dữ liệu              |
-| `byok_openai_api_key`    | `string`                                     |       ✖︎ | –          | BYOK                                |
-| `byok_azure_openai`      | `string`                                     |       ✖︎ | –          | BYOK                                |
-| `byok_cohere_api_key`    | `string`                                     |       ✖︎ | –          | BYOK                                |
-| `byok_huggingface_token` | `string`                                     |       ✖︎ | –          | BYOK                                |
-| `byok_dashscope_api_key` | `string`                                     |       ✖︎ | –          | BYOK                                |
-| `byok_gemini_api_key`    | `string`                                     |       ✖︎ | –          | BYOK                                |
-| `byok_voyage_api_key`    | `string`                                     |       ✖︎ | –          | BYOK (embedding Voyage)             |
+| Trường         | Kiểu                                         | Bắt buộc | Mặc định   | Ghi chú                             |
+| -------------- | -------------------------------------------- | -------: | ---------- | ----------------------------------- |
+| `file`         | `UploadFile` (.md)                           |       ✔︎ | –          | Chỉ nhận **Markdown**               |
+| `dataset_id`   | `string`                                     |       ✔︎ | –          | ID bộ dữ liệu                       |
+| `source`       | `string`                                     |       ✖︎ | –          | Nguồn gốc tài liệu (URL, path, …)   |
+| `tags`         | `string[]`                                   |       ✖︎ | –          | Gửi lặp nhiều field `tags` nếu cần  |
+| `extra_meta`   | `string` (JSON)                              |       ✖︎ | –          | JSON encode, vd: `{"author":"..."}` |
+| `build_tree`   | `bool`                                       |       ✖︎ | `true`     | `true` → build RAPTOR tree          |
+| `summary_llm`  | `string`/enum                                |       ✖︎ | –          | Model tóm tắt (vd: `deepseek_v3`)   |
+| `vector_index` | `string`                                     |       ✖︎ | –          | Tên/khoá cấu hình index vector      |
+| `upsert_mode`  | `"upsert" \| "replace" \| "skip_duplicates"` |       ✖︎ | `"upsert"` | Chiến lược ghi dữ                   |
 
 ---
 
