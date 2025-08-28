@@ -1,7 +1,7 @@
 import { Card, CardBody } from '@heroui/react'
 import { Heading, Text } from '@radix-ui/themes'
 import { IconBox } from '../../atoms'
-import { ReactNode } from 'react'
+import type { ReactNode } from 'react'
 
 interface FeatureCardProps {
   icon: ReactNode
