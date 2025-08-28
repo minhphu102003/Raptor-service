@@ -52,13 +52,6 @@ async def ingest_markdown(
     summary_llm: Annotated[Optional[SummarizeModel], Form()] = None,
     vector_index: Annotated[Optional[str], Form()] = None,
     upsert_mode: Annotated[Literal["upsert", "replace", "skip_duplicates"], Form()] = "upsert",
-    byok_openai_api_key: Annotated[Optional[str], Form()] = None,
-    byok_azure_openai: Annotated[Optional[str], Form()] = None,
-    byok_cohere_api_key: Annotated[Optional[str], Form()] = None,
-    byok_huggingface_token: Annotated[Optional[str], Form()] = None,
-    byok_dashscope_api_key: Annotated[Optional[str], Form()] = None,
-    byok_gemini_api_key: Annotated[Optional[str], Form()] = None,
-    byok_voyage_api_key: Annotated[Optional[str], Form()] = None,
     x_dataset_id: Annotated[Optional[str], Header(alias="X-Dataset-Id")] = None,
 ):
     file = await require_markdown_file(file)
@@ -72,18 +65,8 @@ async def ingest_markdown(
         "summary_llm": summary_llm,
         "vector_index": parse_json_opt("vector_index", vector_index),
         "upsert_mode": upsert_mode,
-        "byok": {
-            "openai_api_key": byok_openai_api_key,
-            "azure_openai": parse_json_opt("byok_azure_openai", byok_azure_openai),
-            "cohere_api_key": byok_cohere_api_key,
-            "huggingface_token": byok_huggingface_token,
-            "dashscope_api_key": byok_dashscope_api_key,
-            "gemini_api_key": byok_gemini_api_key,
-            "voyage_api_key": byok_voyage_api_key,
-        },
     }
 
-    payload_dict["byok"] = {k: v for k, v in payload_dict["byok"].items() if v is not None}
     payload_dict = {k: v for k, v in payload_dict.items() if v is not None}
 
     payload_json = json.dumps(payload_dict, ensure_ascii=False)

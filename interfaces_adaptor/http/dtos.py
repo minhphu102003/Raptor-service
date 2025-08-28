@@ -13,16 +13,6 @@ class ParserConfigGeneric(BaseModel):
     extra: Dict[str, Any] = Field(default_factory=dict)
 
 
-class BYOK(BaseModel):
-    openai_api_key: Optional[str] = None
-    azure_openai: Optional[Dict[str, str]] = None
-    cohere_api_key: Optional[str] = None
-    huggingface_token: Optional[str] = None
-    dashscope_api_key: Optional[str] = None
-    gemini_api_key: Optional[str] = None
-    voyage_api_key: Optional[str] = None
-
-
 class RaptorParams(BaseModel):
     levels_cap: Optional[int] = None
     summary_max_tokens: Optional[int] = None
@@ -40,4 +30,3 @@ class IngestMarkdownPayload(BaseModel):
     summary_llm: Optional[str] = None
     vector_index: Optional[Dict[str, Any]] = None
     upsert_mode: Literal["upsert", "replace", "skip_duplicates"] = "upsert"
-    byok: Optional[BYOK] = None
