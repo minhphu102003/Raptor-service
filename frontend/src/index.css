@@ -1,0 +1,19 @@
+@layer radix, theme, base, utilities;
+
+/* 1) Radix Themes trước */
+@import "@radix-ui/themes/styles.css" layer(radix);
+
+/* 2) Tailwind v4 tách lớp để kiểm soát thứ tự */
+@import "tailwindcss/theme.css"     layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* 3) HeroUI plugin + nguồn quét */
+@plugin "./hero.ts";
+
+@source "./index.html";
+@source "./src/**/*.{ts,tsx,jsx,js}";
+@source "../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}";
+
+/* 4) Tuỳ chọn: dark variant dạng .dark */
+@custom-variant dark (&:is(.dark *));
