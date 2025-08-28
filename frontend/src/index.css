@@ -17,3 +17,20 @@
 
 /* 4) Tuỳ chọn: dark variant dạng .dark */
 @custom-variant dark (&:is(.dark *));
+
+/* 5) Custom font families */
+.font-secondary {
+  font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.username-emphasis {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}

@@ -1,4 +1,3 @@
-import { Flex } from '@radix-ui/themes'
 import { Link } from '@tanstack/react-router'
 import { NavItem } from '../../atoms'
 
@@ -8,6 +7,7 @@ interface NavigationProps {
 
 const navigationItems = [
   { label: 'Features', href: '/#features' },
+  { label: 'Knowledge', href: '/knowledge' },
   { label: 'About', href: '/about' },
   { label: 'Docs', href: '#docs' }
 ]
