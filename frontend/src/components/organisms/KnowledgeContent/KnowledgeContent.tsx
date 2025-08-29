@@ -1,7 +1,7 @@
 import { Button, Input } from '@heroui/react'
 import { Container, Heading, Text, Section } from '@radix-ui/themes'
 import { MagnifyingGlassIcon, PlusIcon } from '@radix-ui/react-icons'
-import { KnowledgeCard } from '../../molecules'
+import { KnowledgeCard, CreateKnowledgeModal } from '../../molecules'
 import { knowledgeBasesData } from '../../../constants/knowledgeData'
 import { useState } from 'react'
 
@@ -12,11 +12,29 @@ interface KnowledgeContentProps {
 
 export const KnowledgeContent = ({ userName = 'John', className }: KnowledgeContentProps) => {
   const [searchQuery, setSearchQuery] = useState('')
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   
   const filteredKnowledgeBases = knowledgeBasesData.filter(kb =>
     kb.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     kb.description.toLowerCase().includes(searchQuery.toLowerCase())
   )
+
+  const handleCreateKnowledge = async (data: { name: string; description: string }) => {
+    try {
+      // TODO: Implement API call to create knowledge base
+      console.log('Creating knowledge base:', data)
+      
+      // For now, just log the data
+      // In a real implementation, you would call an API here
+      // await createKnowledgeBase(data)
+      
+      // Show success message or update the list
+      alert(`Knowledge base "${data.name}" created successfully!`)
+    } catch (error) {
+      console.error('Failed to create knowledge base:', error)
+      throw error // Re-throw to let the modal handle the error state
+    }
+  }
 
   return (
     <Section className={`py-8 ${className || ''}`}>
@@ -48,6 +66,7 @@ export const KnowledgeContent = ({ userName = 'John', className }: KnowledgeCont
             size="lg"
             startContent={<PlusIcon className="w-4 h-4" />}
             className="sm:w-auto w-full"
+            onPress={() => setIsCreateModalOpen(true)}
           >
             Create Knowledge Base
           </Button>
@@ -58,11 +77,11 @@ export const KnowledgeContent = ({ userName = 'John', className }: KnowledgeCont
           {filteredKnowledgeBases.map((kb) => (
             <KnowledgeCard
               key={kb.id}
+              id={kb.id}
               title={kb.title}
               description={kb.description}
               documentCount={kb.documentCount}
               createdAt={kb.createdAt}
-              onClick={() => console.log('Navigate to knowledge base:', kb.id)}
             />
           ))}
         </div>
@@ -82,6 +101,13 @@ export const KnowledgeContent = ({ userName = 'John', className }: KnowledgeCont
           </div>
         )}
       </Container>
+
+      {/* Create Knowledge Modal */}
+      <CreateKnowledgeModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSubmit={handleCreateKnowledge}
+      />
     </Section>
   )
 }

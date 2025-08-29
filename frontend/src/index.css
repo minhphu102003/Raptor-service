@@ -1,4 +1,4 @@
-@layer radix, theme, base, utilities;
+@layer theme, base, utilities, radix;
 
 /* 1) Radix Themes trước */
 @import "@radix-ui/themes/styles.css" layer(radix);
@@ -33,4 +33,17 @@
   font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
   font-weight: 700;
   letter-spacing: -0.025em;
+}
+
+/* Custom button overrides for pagination */
+.pagination-btn {
+  width: 40px !important;
+  min-width: 40px !important;
+  padding: 0 !important;
+}
+
+/* Force Tailwind width utilities to work with HeroUI */
+.force-w-10 {
+  width: 2.5rem !important;
+  min-width: 2.5rem !important;
 }
