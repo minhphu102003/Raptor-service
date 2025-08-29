@@ -9,7 +9,7 @@ interface HeaderProps {
 
 export const Header = ({ className }: HeaderProps) => {
   return (
-    <header className={`sticky top-0 z-50 backdrop-blur-sm bg-white/80 border-b border-gray-200 ${className || ''}`}>
+    <header className={`sticky top-0 z-50 backdrop-blur-sm bg-white/80 dark:bg-gray-900/80 border-b border-gray-200 dark:border-gray-700 ${className || ''}`}>
       <div className="px-12 py-4">
         <Flex align="center" justify="between">
           <Logo />

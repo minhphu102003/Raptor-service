@@ -35,7 +35,7 @@ export const AssistantSettingsTab = ({
     >
       {/* Assistant Configuration */}
       <div>
-        <Text className="text-sm font-medium text-gray-700 mb-2">
+        <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           Assistant Name *
         </Text>
         <Input
@@ -48,7 +48,7 @@ export const AssistantSettingsTab = ({
       </div>
 
       <div>
-        <Text className="text-sm font-medium text-gray-700 mb-2">
+        <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           Description
         </Text>
         <Textarea
@@ -63,7 +63,7 @@ export const AssistantSettingsTab = ({
 
       {/* Knowledge Base Selection */}
       <div>
-        <Text className="text-sm font-medium text-gray-700 mb-3">
+        <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
           Select Knowledge Base *
         </Text>
         <Select
@@ -81,7 +81,7 @@ export const AssistantSettingsTab = ({
             return selectedKb ? (
               <div className="flex justify-between items-center w-full">
                 <span>{selectedKb.name}</span>
-                <span className="text-xs text-gray-500">{selectedKb.docs} docs</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{selectedKb.docs} docs</span>
               </div>
             ) : "Choose a knowledge base..."
           }}
@@ -90,7 +90,7 @@ export const AssistantSettingsTab = ({
             <SelectItem key={kb.id}>
               <div className="flex justify-between items-center w-full">
                 <span>{kb.name}</span>
-                <span className="text-xs text-gray-500">{kb.docs} docs</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{kb.docs} docs</span>
               </div>
             </SelectItem>
           ))}

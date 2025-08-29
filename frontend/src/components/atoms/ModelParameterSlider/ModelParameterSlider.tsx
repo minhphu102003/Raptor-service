@@ -23,10 +23,10 @@ export const ModelParameterSlider = ({
   return (
     <div>
       <Flex align="center" justify="between" className="mb-3">
-        <Text className="text-base font-semibold text-gray-800">
+        <Text className="text-base font-semibold text-gray-800 dark:text-gray-200">
           {label}
         </Text>
-        <Text className="text-sm text-gray-600 font-medium">
+        <Text className="text-sm text-gray-600 dark:text-gray-400 font-medium">
           {value}
         </Text>
       </Flex>
@@ -39,7 +39,7 @@ export const ModelParameterSlider = ({
         onChange={(val) => onChange(Array.isArray(val) ? val[0] : val)}
         className="max-w-full"
       />
-      <Text className="text-xs text-gray-500 mt-2">
+      <Text className="text-xs text-gray-500 dark:text-gray-400 mt-2">
         {description}
       </Text>
     </div>

@@ -41,7 +41,7 @@ export const DatasetSidebar = ({ className }: DatasetSidebarProps) => {
   }
 
   return (
-    <div className={`w-64 bg-white border-r border-gray-200 flex flex-col ${className || ''}`}>
+    <div className={`w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col ${className || ''}`}>
       {/* User Section */}
       <div className="p-6">
         <div className="flex flex-col items-center">
@@ -50,7 +50,7 @@ export const DatasetSidebar = ({ className }: DatasetSidebarProps) => {
             className="bg-indigo-600 text-white mb-3"
             fallback="U"
           />
-          <span className="text-gray-800 font-medium text-base">John Doe</span>
+          <span className="text-gray-800 dark:text-gray-200 font-medium text-base">John Doe</span>
         </div>
       </div>
 
@@ -64,12 +64,12 @@ export const DatasetSidebar = ({ className }: DatasetSidebarProps) => {
                 key={item.id}
                 variant="ghost"
                 size="lg"
-                startContent={<IconComponent className={`w-5 h-5 ${activeItem === item.id ? 'text-blue-700' : 'text-gray-600'}`} />}
+                startContent={<IconComponent className={`w-5 h-5 ${activeItem === item.id ? 'text-blue-700 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`} />}
                 className={`
                   !w-full !justify-start !px-4 !py-3 !font-medium !text-left !border-0 !shadow-none
                   ${activeItem === item.id 
-                    ? '!bg-blue-100 !text-blue-700 hover:!bg-blue-100' 
-                    : '!text-gray-700 hover:!text-gray-900 hover:!bg-gray-100'
+                    ? '!bg-blue-100 dark:!bg-blue-900/30 !text-blue-700 dark:!text-blue-400 hover:!bg-blue-100 dark:hover:!bg-blue-900/30' 
+                    : '!text-gray-700 dark:!text-gray-300 hover:!text-gray-900 dark:hover:!text-gray-100 hover:!bg-gray-100 dark:hover:!bg-gray-800'
                   }
                 `}
                 onClick={() => handleItemClick(item.id)}
