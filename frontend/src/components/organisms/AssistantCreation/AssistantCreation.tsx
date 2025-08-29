@@ -151,7 +151,7 @@ export const AssistantCreation = ({ className, onAssistantSelect }: AssistantCre
                           <TrashIcon className="w-4 h-4" />
                         </Button>
                       </Flex>
-                      
+
                       {/* Model Settings Display */}
                       <div className="mb-2">
                         <Flex align="center" gap="2" className="mb-1">
@@ -169,7 +169,7 @@ export const AssistantCreation = ({ className, onAssistantSelect }: AssistantCre
                           </Chip>
                         </Flex>
                       </div>
-                      
+
                       <Text className="text-xs text-gray-500 truncate">
                         Knowledge: {getKnowledgeBaseNames(assistant.knowledgeBases)}
                       </Text>

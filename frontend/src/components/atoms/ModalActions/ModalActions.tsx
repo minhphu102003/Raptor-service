@@ -26,8 +26,8 @@ export const ModalActions = ({
   return (
     <>
       {onCancel && (
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           onPress={onCancel}
           disabled={disabled || cancelDisabled}
           size="lg"
@@ -36,7 +36,7 @@ export const ModalActions = ({
         </Button>
       )}
       {onConfirm && (
-        <Button 
+        <Button
           color={confirmColor}
           onPress={onConfirm}
           disabled={disabled || confirmDisabled}

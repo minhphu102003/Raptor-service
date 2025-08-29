@@ -1,9 +1,9 @@
-import { 
-  Table, 
-  TableHeader, 
-  TableBody, 
-  TableColumn, 
-  TableRow, 
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableColumn,
+  TableRow,
   TableCell,
   Button,
   Switch,
@@ -15,8 +15,8 @@ import {
   DropdownItem
 } from '@heroui/react'
 import { Text } from '@radix-ui/themes'
-import { 
-  PlusIcon, 
+import {
+  PlusIcon,
   MagnifyingGlassIcon,
   ChevronDownIcon,
   ReloadIcon
@@ -55,7 +55,7 @@ const mockDocuments: Document[] = [
     parsingStatus: 'SUCCESS'
   },
   {
-    id: '2', 
+    id: '2',
     name: '20250319-MÔ TÂ...',
     chunkNumber: 37,
     uploadDate: '13/08/2025 09:00:48',
@@ -65,13 +65,13 @@ const mockDocuments: Document[] = [
   }
 ]
 
-export const DocumentsTable = ({ 
-  onAddDocument, 
+export const DocumentsTable = ({
+  onAddDocument,
   onRenameDocument,
   onEditChunkingMethod,
   onDeleteDocument,
   onDownloadDocument,
-  className 
+  className
 }: DocumentsTableProps) => {
   const [searchQuery, setSearchQuery] = useState('')
   const [documents, setDocuments] = useState<Document[]>(mockDocuments)
@@ -101,9 +101,9 @@ export const DocumentsTable = ({
   };
 
   const handleToggleEnabled = (documentId: string) => {
-    setDocuments(prev => 
-      prev.map(doc => 
-        doc.id === documentId 
+    setDocuments(prev =>
+      prev.map(doc =>
+        doc.id === documentId
           ? { ...doc, enabled: !doc.enabled }
           : doc
       )
@@ -134,8 +134,8 @@ export const DocumentsTable = ({
         <div className="flex gap-2">
           <Dropdown>
             <DropdownTrigger>
-              <Button 
-                variant="bordered" 
+              <Button
+                variant="bordered"
                 endContent={<ChevronDownIcon className="w-4 h-4" />}
               >
                 Bulk
@@ -170,7 +170,7 @@ export const DocumentsTable = ({
       </div>
 
       {/* Documents Table */}
-      <Table 
+      <Table
         aria-label="Documents table"
         selectionMode="multiple"
       >

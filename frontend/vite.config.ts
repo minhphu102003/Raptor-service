@@ -4,6 +4,6 @@ import tsconfigPaths from 'vite-tsconfig-paths'
 import tailwindcss from "@tailwindcss/vite"
 import { TanStackRouterVite } from '@tanstack/router-vite-plugin'
 
-export default defineConfig({  
+export default defineConfig({
   plugins: [react(), tsconfigPaths(), tailwindcss(), TanStackRouterVite()],
 })

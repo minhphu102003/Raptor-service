@@ -28,7 +28,7 @@ export const ModelSettingsTab = ({
   onModelSettingChange
 }: ModelSettingsTabProps) => {
   return (
-    <motion.div 
+    <motion.div
       variants={tabVariants}
       initial="hidden"
       animate="visible"

@@ -12,7 +12,7 @@ export const featuresData = {
     },
     {
       icon: LightningBoltIcon,
-      title: "Lightning Fast", 
+      title: "Lightning Fast",
       description: "Optimized processing pipeline delivers results in seconds, not minutes.",
       color: "green" as const
     },

@@ -42,19 +42,19 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
   useEffect(() => {
     // Update document class and localStorage
     const root = document.documentElement
-    
+
     // Remove existing theme classes
     root.classList.remove('light', 'dark')
-    
+
     // Add current theme class
     root.classList.add(theme)
-    
+
     // Update data attribute for Radix UI
     root.setAttribute('data-theme', theme)
-    
+
     // Save to localStorage
     localStorage.setItem('theme', theme)
-    
+
     // Update CSS custom properties for better compatibility
     if (theme === 'dark') {
       root.style.setProperty('--background', '0 0% 3.9%')

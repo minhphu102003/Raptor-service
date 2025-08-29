@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     voyageai_key: Optional[str] = None
 
-    vector: VectorCfg
+    vector: VectorCfg = VectorCfg(dsn="")
     pg_async_dsn: str | None = None
     pg_dsn: str | None = None
 

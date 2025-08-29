@@ -17,7 +17,7 @@ export const LandingPageTemplate = ({ children, className }: LandingPageTemplate
           {React.Children.toArray(children)[0]}
         </main>
       </div>
-      
+
       {/* Remaining sections below 100vh */}
       <div className="bg-gradient-to-br from-slate-50 to-indigo-50">
         {React.Children.toArray(children).slice(1)}

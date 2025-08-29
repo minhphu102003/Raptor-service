@@ -1,9 +1,9 @@
 import { Button } from '@heroui/react'
 import { Flex } from '@radix-ui/themes'
 import { useNavigate, useLocation } from '@tanstack/react-router'
-import { 
-  FileTextIcon, 
-  ChatBubbleIcon 
+import {
+  FileTextIcon,
+  ChatBubbleIcon
 } from '@radix-ui/react-icons'
 
 interface KnowledgeNavigationProps {
@@ -11,23 +11,23 @@ interface KnowledgeNavigationProps {
 }
 
 const navigationItems = [
-  { 
-    id: 'knowledge-base', 
-    label: 'Knowledge Base', 
+  {
+    id: 'knowledge-base',
+    label: 'Knowledge Base',
     icon: FileTextIcon,
     route: '/knowledge'
   },
-  { 
-    id: 'search', 
-    label: 'Chat', 
+  {
+    id: 'search',
+    label: 'Chat',
     icon: ChatBubbleIcon,
     route: '/chat'
   },
-  { 
-    id: 'agent', 
-    label: 'Agent', 
+  {
+    id: 'agent',
+    label: 'Agent',
     icon: ChatBubbleIcon,
-    route: '/agent' 
+    route: '/agent'
   }
 ]
 
@@ -38,12 +38,12 @@ export const KnowledgeNavigation = ({ className }: KnowledgeNavigationProps) => 
   // Determine active item based on current route
   const getActiveItemId = () => {
     const currentPath = location.pathname
-    
+
     // Check if we're on a dataset route (starts with /dataset)
     if (currentPath.startsWith('/dataset')) {
       return 'knowledge-base'
     }
-    
+
     const activeItem = navigationItems.find(item => item.route === currentPath)
     return activeItem?.id || 'knowledge-base' // Default to knowledge-base
   }
@@ -75,8 +75,8 @@ export const KnowledgeNavigation = ({ className }: KnowledgeNavigationProps) => 
               startContent={<IconComponent className="w-4 h-4" />}
               className={`
                 px-4 py-2 font-bold border-transparent rounded-md transition-colors
-                ${activeItemId === item.id 
-                  ? 'bg-indigo-600 dark:bg-indigo-500 text-white shadow-md' 
+                ${activeItemId === item.id
+                  ? 'bg-indigo-600 dark:bg-indigo-500 text-white shadow-md'
                   : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }
                 ${item.id === 'agent' ? 'opacity-50 cursor-not-allowed' : ''}

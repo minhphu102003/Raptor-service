@@ -27,7 +27,7 @@ export const AssistantSettingsTab = ({
   onKnowledgeChange
 }: AssistantSettingsTabProps) => {
   return (
-    <motion.div 
+    <motion.div
       variants={tabVariants}
       initial="hidden"
       animate="visible"

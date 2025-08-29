@@ -12,13 +12,13 @@ interface ChartSectionProps {
   onCreateNewSession: (assistantId: string) => void
 }
 
-export const ChartSection = ({ 
-  className, 
-  selectedAssistant, 
-  sessions, 
-  selectedSession, 
-  onSelectSession, 
-  onCreateNewSession 
+export const ChartSection = ({
+  className,
+  selectedAssistant,
+  sessions,
+  selectedSession,
+  onSelectSession,
+  onCreateNewSession
 }: ChartSectionProps) => {
   const handleCreateNewSession = () => {
     if (selectedAssistant) {
@@ -40,8 +40,8 @@ export const ChartSection = ({
                 </Heading>
               </Flex>
               <Text className="text-gray-600 text-sm">
-                {selectedAssistant 
-                  ? `Sessions with ${selectedAssistant.name}` 
+                {selectedAssistant
+                  ? `Sessions with ${selectedAssistant.name}`
                   : 'Select an assistant to view sessions'
                 }
               </Text>

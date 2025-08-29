@@ -12,10 +12,10 @@ export const KnowledgeHeader = ({ className }: KnowledgeHeaderProps) => {
       <div className="px-12 py-4">
         <Flex align="center" justify="between">
           <Logo />
-          
+
           {/* Center Navigation */}
           <KnowledgeNavigation />
-          
+
           {/* Right Side Actions */}
           <Flex align="center" gap="4">
             <LanguageSelector />

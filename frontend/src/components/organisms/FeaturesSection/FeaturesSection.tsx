@@ -18,7 +18,7 @@ export const FeaturesSection = ({ className }: FeaturesSectionProps) => {
             {featuresData.subtitle}
           </Text>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {featuresData.features.map((feature, index) => (
             <FeatureCard

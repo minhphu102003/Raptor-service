@@ -7,7 +7,7 @@ export const heroData = {
     href: "#start"
   },
   secondaryButton: {
-    text: "View Demo", 
+    text: "View Demo",
     href: "#demo"
   },
   stats: [

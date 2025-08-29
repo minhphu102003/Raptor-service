@@ -28,7 +28,7 @@ export const LanguageSelector = ({ className }: LanguageSelectorProps) => {
         <span className="hidden sm:inline">{selectedLanguage.name}</span>
         <span className="sm:hidden">{selectedLanguage.flag}</span>
       </Button>
-      
+
       {isOpen && (
         <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-32">
           {languages.map((lang) => (
