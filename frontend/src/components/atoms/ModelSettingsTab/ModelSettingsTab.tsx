@@ -36,7 +36,7 @@ export const ModelSettingsTab = ({
     >
       {/* Model Selection */}
       <div>
-        <Text className="text-sm font-medium text-gray-700 mb-2">
+        <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           Model
         </Text>
         <Select

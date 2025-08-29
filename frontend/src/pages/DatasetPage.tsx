@@ -26,8 +26,7 @@ export const DatasetPage = () => {
     visible: {
       opacity: 1,
       transition: {
-        duration: 0.4,
-        ease: "easeOut"
+        duration: 0.4
       }
     }
   }
@@ -96,7 +95,7 @@ export const DatasetPage = () => {
   return (
     <KnowledgePageTemplate>
       <motion.div 
-        className="h-[calc(100vh-80px)] flex bg-gray-50"
+        className="h-[calc(100vh-80px)] flex bg-gray-50 dark:bg-gray-900"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
@@ -112,11 +111,11 @@ export const DatasetPage = () => {
           variants={itemVariants}
         >
           {/* Content Header */}
-          <div className="bg-white shadow-sm px-8 py-6">
-            <Heading size="6" className="text-gray-900 mb-2 font-secondary-heading">
+          <div className="bg-white dark:bg-gray-800 shadow-sm px-8 py-6 border-b border-gray-200 dark:border-gray-700">
+            <Heading size="6" className="text-gray-900 dark:text-gray-100 mb-2 font-secondary-heading">
               Dataset
             </Heading>
-            <Text className="text-gray-600">
+            <Text className="text-gray-600 dark:text-gray-400">
               Please wait for your files to finish parsing before starting an AI-powered chat.
             </Text>
           </div>

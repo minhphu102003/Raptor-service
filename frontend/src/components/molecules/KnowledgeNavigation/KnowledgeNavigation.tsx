@@ -62,7 +62,7 @@ export const KnowledgeNavigation = ({ className }: KnowledgeNavigationProps) => 
   }
 
   return (
-    <div className="bg-gray-50/80 border border-transparent hover:border hover:border-gray-100 rounded-lg px-3 py-2 backdrop-blur-sm">
+    <div className="bg-gray-50/80 dark:bg-gray-800/80 border border-transparent hover:border hover:border-gray-100 dark:hover:border-gray-600 rounded-lg px-3 py-2 backdrop-blur-sm">
       <Flex align="center" gap="3" className={className}>
         {navigationItems.map((item) => {
           const IconComponent = item.icon
@@ -76,8 +76,8 @@ export const KnowledgeNavigation = ({ className }: KnowledgeNavigationProps) => 
               className={`
                 px-4 py-2 font-bold border-transparent rounded-md transition-colors
                 ${activeItemId === item.id 
-                  ? 'bg-indigo-600 text-white shadow-md' 
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  ? 'bg-indigo-600 dark:bg-indigo-500 text-white shadow-md' 
+                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }
                 ${item.id === 'agent' ? 'opacity-50 cursor-not-allowed' : ''}
               `}

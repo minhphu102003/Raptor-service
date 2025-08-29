@@ -23,7 +23,7 @@ export const Navigation = ({ className }: NavigationProps) => {
             href={item.href}
           />
         ) : (
-          <Link key={item.label} to={item.href} className="text-gray-600 hover:text-gray-900 cursor-pointer transition-colors">
+          <Link key={item.label} to={item.href} className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 cursor-pointer transition-colors">
             {item.label}
           </Link>
         )
