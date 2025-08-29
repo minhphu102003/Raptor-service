@@ -41,15 +41,15 @@ export const KnowledgeCard = ({
 
   const cardContent = (
     <Card 
-      className={`px-6 py-4 hover:shadow-lg transition-all duration-200 border border-gray-200 hover:border-indigo-300 cursor-pointer ${className || ''}`}
+      className={`px-6 py-6 h-[280px] hover:shadow-lg transition-all duration-200 border border-gray-200 hover:border-indigo-300 cursor-pointer ${className || ''}`}
       onClick={onClick ? handleClick : undefined}
     >
-      <CardBody>
-        <Heading size="4" className="text-gray-900 font-bold mb-3 line-clamp-1" style={{ color: '#1f2937' }}>
+      <CardBody className="flex flex-col justify-between h-full">
+        <Heading size="4" className="text-gray-900 font-bold mb-4" style={{ color: '#1f2937' }}>
           {title}
         </Heading>
         
-        <Text className="text-gray-600 leading-relaxed mb-4 line-clamp-2 min-h-[3rem]">
+        <Text className="text-gray-600 leading-relaxed mb-6 line-clamp-3 flex-grow">
           {description}
         </Text>
         

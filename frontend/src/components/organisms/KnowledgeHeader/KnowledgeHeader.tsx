@@ -8,17 +8,16 @@ interface KnowledgeHeaderProps {
 
 export const KnowledgeHeader = ({ className }: KnowledgeHeaderProps) => {
   return (
-    <header className={`sticky top-0 z-50 backdrop-blur-sm bg-white/95 border-b border-gray-200 ${className || ''}`}>
-      <Container size="4">
-        <Flex align="center" justify="between" className="py-4">
-          {/* Logo */}
+    <header className={`sticky top-0 z-50 backdrop-blur-sm bg-white/80 border-b border-gray-200 ${className || ''}`}>
+      <div className="px-12 py-4">
+        <Flex align="center" justify="between">
           <Logo />
           
           {/* Center Navigation */}
           <KnowledgeNavigation />
           
           {/* Right Side Actions */}
-          <Flex align="center" gap="2">
+          <Flex align="center" gap="4">
             <LanguageSelector />
             <GitButton onClick={() => window.open('https://github.com', '_blank')} />
             <QuestionButton onClick={() => alert('Help center coming soon!')} />
@@ -27,7 +26,7 @@ export const KnowledgeHeader = ({ className }: KnowledgeHeaderProps) => {
             <UserAccount />
           </Flex>
         </Flex>
-      </Container>
+      </div>
     </header>
   )
 }

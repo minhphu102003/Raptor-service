@@ -3,7 +3,6 @@ import { Flex } from '@radix-ui/themes'
 import { useNavigate, useLocation } from '@tanstack/react-router'
 import { 
   FileTextIcon, 
-  MagnifyingGlassIcon, 
   ChatBubbleIcon 
 } from '@radix-ui/react-icons'
 
@@ -20,15 +19,15 @@ const navigationItems = [
   },
   { 
     id: 'search', 
-    label: 'Search', 
-    icon: MagnifyingGlassIcon,
+    label: 'Chat', 
+    icon: ChatBubbleIcon,
     route: '/chat'
   },
   { 
     id: 'agent', 
     label: 'Agent', 
     icon: ChatBubbleIcon,
-    route: '/agent' // Future route
+    route: '/agent' 
   }
 ]
 
