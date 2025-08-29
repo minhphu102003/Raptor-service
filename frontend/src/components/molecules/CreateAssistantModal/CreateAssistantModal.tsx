@@ -1,12 +1,28 @@
-import { Button, Input, Textarea, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react'
-import { Text, Flex } from '@radix-ui/themes'
+import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Tabs, Tab } from '@heroui/react'
+import { Flex } from '@radix-ui/themes'
 import { PersonIcon } from '@radix-ui/react-icons'
 import { useState, useEffect } from 'react'
+import { AssistantSettingsTab, ModelSettingsTab } from '../../atoms'
+
+interface ModelSettings {
+  model: string
+  temperature: number
+  topP: number
+  presencePenalty: number
+  frequencyPenalty: number
+}
+
+interface AssistantData {
+  name: string
+  description: string
+  knowledgeBases: string[]
+  modelSettings: ModelSettings
+}
 
 interface CreateAssistantModalProps {
   isOpen: boolean
   onClose: () => void
-  onCreateAssistant: (name: string, description: string, knowledgeBases: string[]) => void
+  onCreateAssistant: (data: AssistantData) => void
   knowledgeBases: Array<{ id: string; name: string; docs: number }>
   className?: string
 }
@@ -18,39 +34,68 @@ export const CreateAssistantModal = ({
   knowledgeBases,
   className 
 }: CreateAssistantModalProps) => {
+  const [activeTab, setActiveTab] = useState('assistant')
   const [assistantName, setAssistantName] = useState('')
   const [assistantDescription, setAssistantDescription] = useState('')
-  const [selectedKnowledge, setSelectedKnowledge] = useState<string[]>([])
+  const [selectedKnowledge, setSelectedKnowledge] = useState<string>('')
+  
+  // Model settings with defaults
+  const [modelSettings, setModelSettings] = useState<ModelSettings>({
+    model: 'gpt-4o',
+    temperature: 0.7,
+    topP: 1.0,
+    presencePenalty: 0.0,
+    frequencyPenalty: 0.0
+  })
+
+  const availableModels = [
+    { key: 'gpt-4o', label: 'GPT-4o (Latest)' },
+    { key: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+    { key: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
+    { key: 'claude-3-opus', label: 'Claude 3 Opus' },
+    { key: 'claude-3-sonnet', label: 'Claude 3 Sonnet' }
+  ]
 
   // Reset form when modal closes
   useEffect(() => {
     if (!isOpen) {
+      setActiveTab('assistant')
       setAssistantName('')
       setAssistantDescription('')
-      setSelectedKnowledge([])
+      setSelectedKnowledge('')
+      setModelSettings({
+        model: 'gpt-4o',
+        temperature: 0.7,
+        topP: 1.0,
+        presencePenalty: 0.0,
+        frequencyPenalty: 0.0
+      })
     }
   }, [isOpen])
 
-  const toggleKnowledgeBase = (id: string) => {
-    setSelectedKnowledge(prev => 
-      prev.includes(id) 
-        ? prev.filter(item => item !== id)
-        : [...prev, id]
-    )
+  const handleCreateAssistant = () => {
+    if (!assistantName.trim() || !selectedKnowledge) return
+    
+    const assistantData: AssistantData = {
+      name: assistantName.trim(),
+      description: assistantDescription.trim(),
+      knowledgeBases: [selectedKnowledge], // Convert single selection to array
+      modelSettings
+    }
+    
+    onCreateAssistant(assistantData)
+    onClose()
   }
 
-  const handleCreateAssistant = () => {
-    if (!assistantName.trim() || selectedKnowledge.length === 0) return
-    
-    onCreateAssistant(assistantName.trim(), assistantDescription.trim(), selectedKnowledge)
-    onClose()
+  const updateModelSetting = (key: keyof ModelSettings, value: string | number) => {
+    setModelSettings(prev => ({ ...prev, [key]: value }))
   }
 
   return (
     <Modal 
       isOpen={isOpen} 
       onClose={onClose}
-      size="2xl"
+      size="3xl"
       className={className}
     >
       <ModalContent>
@@ -61,77 +106,31 @@ export const CreateAssistantModal = ({
           </Flex>
         </ModalHeader>
         <ModalBody>
-          <div className="space-y-4">
-            {/* Assistant Configuration */}
-            <div>
-              <Text className="text-sm font-medium text-gray-700 mb-2">
-                Assistant Name *
-              </Text>
-              <Input
-                placeholder="Enter assistant name"
-                value={assistantName}
-                onChange={(e) => setAssistantName(e.target.value)}
-                variant="bordered"
-                size="md"
+          <Tabs 
+            selectedKey={activeTab} 
+            onSelectionChange={(key) => setActiveTab(key as string)}
+            className="w-full"
+          >
+            <Tab key="assistant" title="Assistant Settings">
+              <AssistantSettingsTab
+                assistantName={assistantName}
+                assistantDescription={assistantDescription}
+                selectedKnowledge={selectedKnowledge}
+                knowledgeBases={knowledgeBases}
+                onNameChange={setAssistantName}
+                onDescriptionChange={setAssistantDescription}
+                onKnowledgeChange={setSelectedKnowledge}
               />
-            </div>
+            </Tab>
 
-            <div>
-              <Text className="text-sm font-medium text-gray-700 mb-2">
-                Description
-              </Text>
-              <Textarea
-                placeholder="Describe your assistant's purpose..."
-                value={assistantDescription}
-                onChange={(e) => setAssistantDescription(e.target.value)}
-                variant="bordered"
-                size="md"
-                minRows={3}
+            <Tab key="model" title="Model Settings">
+              <ModelSettingsTab
+                modelSettings={modelSettings}
+                availableModels={availableModels}
+                onModelSettingChange={updateModelSetting}
               />
-            </div>
-
-            {/* Knowledge Base Selection */}
-            <div>
-              <Text className="text-sm font-medium text-gray-700 mb-3">
-                Select Knowledge Bases *
-              </Text>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {knowledgeBases.map((kb) => (
-                  <div
-                    key={kb.id}
-                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                      selectedKnowledge.includes(kb.id)
-                        ? 'border-indigo-500 bg-indigo-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                    onClick={() => toggleKnowledgeBase(kb.id)}
-                  >
-                    <Flex align="center" justify="between">
-                      <div>
-                        <Text className="text-sm font-medium text-gray-900">
-                          {kb.name}
-                        </Text>
-                        <Text className="text-xs text-gray-500">
-                          {kb.docs} documents
-                        </Text>
-                      </div>
-                      <div className={`w-4 h-4 rounded border-2 ${
-                        selectedKnowledge.includes(kb.id)
-                          ? 'border-indigo-500 bg-indigo-500'
-                          : 'border-gray-300'
-                      }`}>
-                        {selectedKnowledge.includes(kb.id) && (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <div className="w-2 h-2 bg-white rounded-full" />
-                          </div>
-                        )}
-                      </div>
-                    </Flex>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+            </Tab>
+          </Tabs>
         </ModalBody>
         <ModalFooter>
           <Button 
@@ -144,7 +143,7 @@ export const CreateAssistantModal = ({
           <Button 
             color="primary" 
             onClick={handleCreateAssistant}
-            isDisabled={!assistantName.trim() || selectedKnowledge.length === 0}
+            isDisabled={!assistantName.trim() || !selectedKnowledge}
           >
             Create Assistant
           </Button>

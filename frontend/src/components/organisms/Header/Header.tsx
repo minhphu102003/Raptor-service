@@ -1,5 +1,5 @@
 import { Button } from '@heroui/react'
-import { Container, Flex } from '@radix-ui/themes'
+import { Flex } from '@radix-ui/themes'
 import { Logo } from '../../atoms'
 import { Navigation } from '../../molecules'
 
@@ -10,8 +10,8 @@ interface HeaderProps {
 export const Header = ({ className }: HeaderProps) => {
   return (
     <header className={`sticky top-0 z-50 backdrop-blur-sm bg-white/80 border-b border-gray-200 ${className || ''}`}>
-      <Container size="4">
-        <Flex align="center" justify="between" className="py-4">
+      <div className="px-12 py-4">
+        <Flex align="center" justify="between">
           <Logo />
           
           <Flex align="center" gap="4">
@@ -21,7 +21,7 @@ export const Header = ({ className }: HeaderProps) => {
             </Button>
           </Flex>
         </Flex>
-      </Container>
+      </div>
     </header>
   )
 }

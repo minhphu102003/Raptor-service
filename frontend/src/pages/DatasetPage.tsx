@@ -4,9 +4,33 @@ import { DocumentsTable } from '../components/organisms'
 import { KnowledgePageTemplate } from '../components/templates'
 import type { FileUploadItem } from '../components/molecules'
 import { useState } from 'react'
+import { motion } from 'framer-motion'
 
 export const DatasetPage = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+
+  // Animation variants for simple fade-in effects
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        duration: 0.5,
+        staggerChildren: 0.2
+      }
+    }
+  }
+
+  const itemVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        duration: 0.4,
+        ease: "easeOut"
+      }
+    }
+  }
 
   const handleAddDocuments = async (files: FileUploadItem[]) => {
     try {
@@ -71,12 +95,22 @@ export const DatasetPage = () => {
 
   return (
     <KnowledgePageTemplate>
-      <div className="h-[calc(100vh-80px)] flex bg-gray-50">
+      <motion.div 
+        className="h-[calc(100vh-80px)] flex bg-gray-50"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
         {/* Sidebar */}
-        <DatasetSidebar />
+        <motion.div variants={itemVariants}>
+          <DatasetSidebar />
+        </motion.div>
         
         {/* Main Content */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <motion.div 
+          className="flex-1 flex flex-col overflow-hidden"
+          variants={itemVariants}
+        >
           {/* Content Header */}
           <div className="bg-white shadow-sm px-8 py-6">
             <Heading size="6" className="text-gray-900 mb-2 font-secondary-heading">
@@ -97,7 +131,7 @@ export const DatasetPage = () => {
               onDownloadDocument={handleDownloadDocument}
             />
           </div>
-        </div>
+        </motion.div>
 
         {/* Add Document Modal */}
         <AddDocumentModal
@@ -105,7 +139,7 @@ export const DatasetPage = () => {
           onClose={() => setIsAddModalOpen(false)}
           onSubmit={handleAddDocuments}
         />
-      </div>
+      </motion.div>
     </KnowledgePageTemplate>
   )
 }

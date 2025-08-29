@@ -3,58 +3,49 @@ import {
   ModalContent, 
   ModalHeader, 
   ModalBody, 
-  ModalFooter, 
-  Button, 
-  Input,
-  Textarea
+  ModalFooter
 } from '@heroui/react'
 import { Text } from '@radix-ui/themes'
-import { useState, useEffect } from 'react'
+import { useRef, useEffect } from 'react'
+import { type CreateKnowledgeFormData } from '../../../schemas'
+import { CreateKnowledgeForm, type CreateKnowledgeFormRef } from '../CreateKnowledgeForm'
+import { ModalActions } from '../../atoms/ModalActions'
 
 export interface CreateKnowledgeModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (data: { name: string; description: string }) => void
+  onSubmit: (data: CreateKnowledgeFormData) => void
 }
 
 export const CreateKnowledgeModal = ({ isOpen, onClose, onSubmit }: CreateKnowledgeModalProps) => {
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const formRef = useRef<CreateKnowledgeFormRef>(null)
 
-  // Reset state when modal closes
+  // Reset form when modal closes
   useEffect(() => {
-    if (!isOpen) {
-      setName('')
-      setDescription('')
-      setIsSubmitting(false)
+    if (!isOpen && formRef.current) {
+      formRef.current.reset()
     }
   }, [isOpen])
 
-  const handleSubmit = async () => {
-    if (!name.trim()) return
-
-    setIsSubmitting(true)
+  const handleSubmit = async (data: CreateKnowledgeFormData) => {
     try {
-      await onSubmit({
-        name: name.trim(),
-        description: description.trim()
-      })
+      await onSubmit(data)
       onClose()
     } catch (error) {
       console.error('Error creating knowledge base:', error)
-    } finally {
-      setIsSubmitting(false)
+      throw error // Re-throw to let form handle the error state
     }
   }
 
   const handleClose = () => {
-    if (!isSubmitting) {
+    if (!formRef.current?.isSubmitting) {
       onClose()
     }
   }
 
-  const isValid = name.trim().length > 0
+  const handleConfirm = () => {
+    formRef.current?.submit()
+  }
 
   return (
     <Modal 
@@ -76,55 +67,22 @@ export const CreateKnowledgeModal = ({ isOpen, onClose, onSubmit }: CreateKnowle
         </ModalHeader>
         
         <ModalBody className="py-6">
-          <div className="space-y-4">
-            <div>
-              <Input
-                label="Name"
-                placeholder="Enter a name for your knowledge base"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                variant="bordered"
-                size="lg"
-                isRequired
-                autoFocus
-                disabled={isSubmitting}
-                className="w-full"
-              />
-            </div>
-            
-            <div>
-              <Textarea
-                label="Description"
-                placeholder="Describe what this knowledge base contains..."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                variant="bordered"
-                size="lg"
-                minRows={3}
-                maxRows={5}
-                disabled={isSubmitting}
-                className="w-full"
-              />
-            </div>
-          </div>
+          <CreateKnowledgeForm
+            ref={formRef}
+            onSubmit={handleSubmit}
+            disabled={formRef.current?.isSubmitting}
+          />
         </ModalBody>
         
         <ModalFooter>
-          <Button 
-            variant="ghost" 
-            onPress={handleClose}
-            disabled={isSubmitting}
-          >
-            Cancel
-          </Button>
-          <Button 
-            color="primary" 
-            onPress={handleSubmit}
-            disabled={!isValid || isSubmitting}
-            isLoading={isSubmitting}
-          >
-            {isSubmitting ? 'Creating...' : 'Create Knowledge Base'}
-          </Button>
+          <ModalActions
+            onCancel={handleClose}
+            onConfirm={handleConfirm}
+            cancelText="Cancel"
+            confirmText={formRef.current?.isSubmitting ? 'Creating...' : 'Create Knowledge Base'}
+            isLoading={formRef.current?.isSubmitting}
+            disabled={formRef.current?.isSubmitting}
+          />
         </ModalFooter>
       </ModalContent>
     </Modal>

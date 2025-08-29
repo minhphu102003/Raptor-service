@@ -1,10 +1,19 @@
 import { useState, useCallback } from 'react'
 
+export interface ModelSettings {
+  model: string
+  temperature: number
+  topP: number
+  presencePenalty: number
+  frequencyPenalty: number
+}
+
 export interface Assistant {
   id: string
   name: string
   description: string
   knowledgeBases: string[]
+  modelSettings: ModelSettings
   createdAt: Date
 }
 

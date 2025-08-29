@@ -1,15 +1,16 @@
-import { Card, CardBody, Button, Avatar } from '@heroui/react'
+import { Card, CardBody, Button, Avatar, Chip } from '@heroui/react'
 import { Heading, Text, Flex } from '@radix-ui/themes'
-import { PlusIcon, PersonIcon, TrashIcon } from '@radix-ui/react-icons'
+import { PlusIcon, PersonIcon, TrashIcon, GearIcon } from '@radix-ui/react-icons'
 import { useState } from 'react'
 import { CreateAssistantModal } from '../../molecules'
+import { motion } from 'framer-motion'
+import type { Assistant, ModelSettings } from '../../../hooks/useChatState'
 
-interface Assistant {
-  id: string
+interface AssistantData {
   name: string
   description: string
   knowledgeBases: string[]
-  createdAt: Date
+  modelSettings: ModelSettings
 }
 
 interface AssistantCreationProps {
@@ -29,12 +30,19 @@ export const AssistantCreation = ({ className, onAssistantSelect }: AssistantCre
     { id: '4', name: 'Research Papers', docs: 67 }
   ]
 
-  const handleCreateAssistant = (name: string, description: string, knowledgeBases: string[]) => {
+  // Animation variants
+  const cardVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.3 } }
+  }
+
+  const handleCreateAssistant = (data: AssistantData) => {
     const newAssistant: Assistant = {
       id: Date.now().toString(),
-      name,
-      description,
-      knowledgeBases,
+      name: data.name,
+      description: data.description,
+      knowledgeBases: data.knowledgeBases,
+      modelSettings: data.modelSettings,
       createdAt: new Date()
     }
 
@@ -102,8 +110,11 @@ export const AssistantCreation = ({ className, onAssistantSelect }: AssistantCre
                     Your Assistants ({assistants.length})
                   </Text>
                   {assistants.map((assistant) => (
-                    <div
+                    <motion.div
                       key={assistant.id}
+                      variants={cardVariants}
+                      initial="hidden"
+                      animate="visible"
                       className={`p-4 rounded-lg border cursor-pointer hover:shadow-sm transition-all ${
                         selectedAssistant?.id === assistant.id
                           ? 'border-indigo-500 bg-indigo-50'
@@ -118,11 +129,11 @@ export const AssistantCreation = ({ className, onAssistantSelect }: AssistantCre
                             className="bg-indigo-600 text-white flex-shrink-0"
                             fallback={assistant.name.charAt(0).toUpperCase()}
                           />
-                          <div>
-                            <Text className="text-sm font-medium text-gray-900">
+                          <div className="flex-1 min-w-0">
+                            <Text className="text-sm font-medium text-gray-900 truncate">
                               {assistant.name}
                             </Text>
-                            <Text className="text-xs text-gray-500">
+                            <Text className="text-xs text-gray-500 truncate">
                               {assistant.description || 'No description'}
                             </Text>
                           </div>
@@ -132,18 +143,40 @@ export const AssistantCreation = ({ className, onAssistantSelect }: AssistantCre
                           variant="light"
                           color="danger"
                           isIconOnly
-                          onClick={() => handleDeleteAssistant(assistant.id)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDeleteAssistant(assistant.id)
+                          }}
                         >
                           <TrashIcon className="w-4 h-4" />
                         </Button>
                       </Flex>
-                      <Text className="text-xs text-gray-500">
+                      
+                      {/* Model Settings Display */}
+                      <div className="mb-2">
+                        <Flex align="center" gap="2" className="mb-1">
+                          <GearIcon className="w-3 h-3 text-gray-400" />
+                          <Text className="text-xs text-gray-600">
+                            Model: {assistant.modelSettings.model}
+                          </Text>
+                        </Flex>
+                        <Flex gap="1" wrap="wrap">
+                          <Chip size="sm" variant="flat" className="text-xs">
+                            T: {assistant.modelSettings.temperature}
+                          </Chip>
+                          <Chip size="sm" variant="flat" className="text-xs">
+                            P: {assistant.modelSettings.topP}
+                          </Chip>
+                        </Flex>
+                      </div>
+                      
+                      <Text className="text-xs text-gray-500 truncate">
                         Knowledge: {getKnowledgeBaseNames(assistant.knowledgeBases)}
                       </Text>
                       <Text className="text-xs text-gray-400 mt-1">
                         Created: {assistant.createdAt.toLocaleDateString()}
                       </Text>
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
               )}
