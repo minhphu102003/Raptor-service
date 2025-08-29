@@ -19,13 +19,25 @@ export const KnowledgeCard = ({
   className,
   onClick 
 }: KnowledgeCardProps) => {
+
+  const formatTimestamp = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
   return (
     <Card 
-      className={`p-6 hover:shadow-lg transition-all duration-200 border border-gray-200 hover:border-indigo-300 cursor-pointer ${className || ''}`}
+      className={`px-6 py-4 hover:shadow-lg transition-all duration-200 border border-gray-200 hover:border-indigo-300 cursor-pointer ${className || ''}`}
       onClick={onClick}
     >
       <CardBody>
-        <Heading size="4" className="text-gray-900 mb-3 line-clamp-1">
+        <Heading size="4" className="text-gray-900 font-bold mb-3 line-clamp-1" style={{ color: '#1f2937' }}>
           {title}
         </Heading>
         
@@ -33,15 +45,19 @@ export const KnowledgeCard = ({
           {description}
         </Text>
         
-        <Flex align="center" justify="between" className="text-sm text-gray-500">
-          <Flex align="center" gap="2">
-            <FileTextIcon className="w-4 h-4" />
-            <span>{documentCount} documents</span>
+        <Flex align="start" direction={"column"} justify="between" gap={"2"} className="text-base text-gray-500">
+          <Flex gap="1">
+            <Flex align="center" gap="2">
+              <FileTextIcon className="w-4 h-4" />
+              <span>{documentCount} documents</span>
+            </Flex>
           </Flex>
           
-          <Flex align="center" gap="2">
-            <ClockIcon className="w-4 h-4" />
-            <span>{createdAt}</span>
+          <Flex gap="1">
+            <Flex align="center" gap="2">
+              <ClockIcon className="w-4 h-4" />
+              <span>{formatTimestamp(createdAt)}</span>
+            </Flex>
           </Flex>
         </Flex>
       </CardBody>
