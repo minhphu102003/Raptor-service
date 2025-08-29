@@ -13,6 +13,7 @@ import { Route as KnowledgeRouteImport } from './routes/knowledge'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DatasetIdRouteImport } from './routes/dataset.$id'
 
 const KnowledgeRoute = KnowledgeRouteImport.update({
   id: '/knowledge',
@@ -34,18 +35,25 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DatasetIdRoute = DatasetIdRouteImport.update({
+  id: '/dataset/$id',
+  path: '/dataset/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/chat': typeof ChatRoute
   '/knowledge': typeof KnowledgeRoute
+  '/dataset/$id': typeof DatasetIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/chat': typeof ChatRoute
   '/knowledge': typeof KnowledgeRoute
+  '/dataset/$id': typeof DatasetIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,14 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/chat': typeof ChatRoute
   '/knowledge': typeof KnowledgeRoute
+  '/dataset/$id': typeof DatasetIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/chat' | '/knowledge'
+  fullPaths: '/' | '/about' | '/chat' | '/knowledge' | '/dataset/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/chat' | '/knowledge'
-  id: '__root__' | '/' | '/about' | '/chat' | '/knowledge'
+  to: '/' | '/about' | '/chat' | '/knowledge' | '/dataset/$id'
+  id: '__root__' | '/' | '/about' | '/chat' | '/knowledge' | '/dataset/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,6 +76,7 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   ChatRoute: typeof ChatRoute
   KnowledgeRoute: typeof KnowledgeRoute
+  DatasetIdRoute: typeof DatasetIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,6 +109,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dataset/$id': {
+      id: '/dataset/$id'
+      path: '/dataset/$id'
+      fullPath: '/dataset/$id'
+      preLoaderRoute: typeof DatasetIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -107,6 +124,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   ChatRoute: ChatRoute,
   KnowledgeRoute: KnowledgeRoute,
+  DatasetIdRoute: DatasetIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

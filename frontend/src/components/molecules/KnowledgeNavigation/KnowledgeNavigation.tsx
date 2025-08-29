@@ -39,6 +39,12 @@ export const KnowledgeNavigation = ({ className }: KnowledgeNavigationProps) => 
   // Determine active item based on current route
   const getActiveItemId = () => {
     const currentPath = location.pathname
+    
+    // Check if we're on a dataset route (starts with /dataset)
+    if (currentPath.startsWith('/dataset')) {
+      return 'knowledge-base'
+    }
+    
     const activeItem = navigationItems.find(item => item.route === currentPath)
     return activeItem?.id || 'knowledge-base' // Default to knowledge-base
   }

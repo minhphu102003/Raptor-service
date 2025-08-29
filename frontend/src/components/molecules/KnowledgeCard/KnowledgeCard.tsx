@@ -1,8 +1,10 @@
 import { Card, CardBody } from '@heroui/react'
 import { Heading, Text, Flex } from '@radix-ui/themes'
 import { ClockIcon, FileTextIcon } from '@radix-ui/react-icons'
+import { Link } from '@tanstack/react-router'
 
 interface KnowledgeCardProps {
+  id?: string
   title: string
   description: string
   documentCount: number
@@ -12,6 +14,7 @@ interface KnowledgeCardProps {
 }
 
 export const KnowledgeCard = ({ 
+  id,
   title, 
   description, 
   documentCount, 
@@ -19,6 +22,11 @@ export const KnowledgeCard = ({
   className,
   onClick 
 }: KnowledgeCardProps) => {
+  const handleClick = () => {
+    if (onClick) {
+      onClick()
+    }
+  }
 
   const formatTimestamp = (dateString: string) => {
     const date = new Date(dateString)
@@ -31,10 +39,10 @@ export const KnowledgeCard = ({
     })
   }
 
-  return (
+  const cardContent = (
     <Card 
       className={`px-6 py-4 hover:shadow-lg transition-all duration-200 border border-gray-200 hover:border-indigo-300 cursor-pointer ${className || ''}`}
-      onClick={onClick}
+      onClick={onClick ? handleClick : undefined}
     >
       <CardBody>
         <Heading size="4" className="text-gray-900 font-bold mb-3 line-clamp-1" style={{ color: '#1f2937' }}>
@@ -63,4 +71,15 @@ export const KnowledgeCard = ({
       </CardBody>
     </Card>
   )
+
+  // If no custom onClick handler and has id, wrap with Link for navigation
+  if (!onClick && id) {
+    return (
+      <Link to="/dataset/$id" params={{ id }} className="block">
+        {cardContent}
+      </Link>
+    )
+  }
+
+  return cardContent
 }
