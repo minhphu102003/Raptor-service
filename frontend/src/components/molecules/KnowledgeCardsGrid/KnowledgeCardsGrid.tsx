@@ -1,4 +1,5 @@
 import { KnowledgeCard } from '../KnowledgeCard'
+import { KnowledgeCardSkeleton } from '../KnowledgeCardSkeleton'
 import { motion } from 'framer-motion'
 
 interface KnowledgeBase {
@@ -12,9 +13,18 @@ interface KnowledgeBase {
 interface KnowledgeCardsGridProps {
   knowledgeBases: KnowledgeBase[]
   className?: string
+  isLoading?: boolean
+  onRename?: (id: string, newName: string) => void
+  onDelete?: (id: string) => void
 }
 
-export const KnowledgeCardsGrid = ({ knowledgeBases, className }: KnowledgeCardsGridProps) => {
+export const KnowledgeCardsGrid = ({ 
+  knowledgeBases, 
+  className, 
+  isLoading = false,
+  onRename,
+  onDelete 
+}: KnowledgeCardsGridProps) => {
   const cardVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -37,25 +47,40 @@ export const KnowledgeCardsGrid = ({ knowledgeBases, className }: KnowledgeCards
         }
       }}
     >
-      {knowledgeBases.map((kb) => (
-        <motion.div
-          key={kb.id}
-          variants={cardVariants}
-          whileHover={{
-            scale: 1.02,
-            transition: { duration: 0.2 }
-          }}
-          whileTap={{ scale: 0.98 }}
-        >
-          <KnowledgeCard
-            id={kb.id}
-            title={kb.title}
-            description={kb.description}
-            documentCount={kb.documentCount}
-            createdAt={kb.createdAt}
-          />
-        </motion.div>
-      ))}
+      {isLoading ? (
+        // Show skeleton cards while loading
+        Array.from({ length: 8 }).map((_, index) => (
+          <motion.div
+            key={`skeleton-${index}`}
+            variants={cardVariants}
+          >
+            <KnowledgeCardSkeleton />
+          </motion.div>
+        ))
+      ) : (
+        // Show actual knowledge base cards
+        knowledgeBases.map((kb) => (
+          <motion.div
+            key={kb.id}
+            variants={cardVariants}
+            whileHover={{
+              scale: 1.02,
+              transition: { duration: 0.2 }
+            }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <KnowledgeCard
+              id={kb.id}
+              title={kb.title}
+              description={kb.description}
+              documentCount={kb.documentCount}
+              createdAt={kb.createdAt}
+              onRename={onRename}
+              onDelete={onDelete}
+            />
+          </motion.div>
+        ))
+      )}
     </motion.div>
   )
 }

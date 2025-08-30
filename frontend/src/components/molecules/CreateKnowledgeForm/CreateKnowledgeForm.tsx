@@ -11,7 +11,7 @@ export interface CreateKnowledgeFormProps {
 }
 
 export interface CreateKnowledgeFormRef {
-  submit: () => void
+  submit: () => Promise<void>
   reset: () => void
   isValid: boolean
   isSubmitting: boolean
@@ -32,7 +32,7 @@ export const CreateKnowledgeForm = forwardRef<CreateKnowledgeFormRef, CreateKnow
     } = useForm<CreateKnowledgeFormData>({
       // @ts-expect-error - Zod version compatibility issue
       resolver: zodResolver(createKnowledgeSchema),
-      mode: 'onSubmit', // Start with onSubmit mode
+      mode: hasAttemptedSubmit ? 'onChange' : 'onSubmit', // Dynamic validation mode
       reValidateMode: 'onChange', // After first validation, revalidate on change
       defaultValues: {
         name: '',
@@ -52,21 +52,28 @@ export const CreateKnowledgeForm = forwardRef<CreateKnowledgeFormRef, CreateKnow
       }
     }
 
-    const handleFormSubmit = () => {
+    const handleFormSubmit = async () => {
       // Mark that user has attempted to submit
       hasAttemptedSubmitRef.current = true
       setHasAttemptedSubmit(true) // Force re-render
 
-      // Use handleSubmit to trigger validation
-      handleSubmit(
-        // onValid - this runs if form is valid
-        onSubmitForm,
-        // onInvalid - this runs if form has errors
-        (errors) => {
-          console.log('Form validation errors:', errors)
-          // Errors will be automatically displayed through formState.errors
-        }
-      )()
+      // Validate all fields first
+      const isFormValid = await trigger()
+      
+      if (isFormValid) {
+        // If form is valid, submit it
+        const submitHandler = handleSubmit(
+          // onValid - this runs if form is valid
+          onSubmitForm,
+          // onInvalid - this runs if form has errors
+          (errors) => {
+            console.log('Form validation errors:', errors)
+            // Errors will be automatically displayed through formState.errors
+          }
+        )
+        
+        await submitHandler()
+      }
     }
 
     const resetForm = () => {
@@ -88,14 +95,7 @@ export const CreateKnowledgeForm = forwardRef<CreateKnowledgeFormRef, CreateKnow
       <div className="space-y-4">
         <div>
           <FormField
-            {...register('name', {
-              onChange: () => {
-                // Only validate on change after first submit attempt
-                if (hasAttemptedSubmit) {
-                  trigger('name')
-                }
-              }
-            })}
+            {...register('name')}
             label="Name"
             placeholder="Enter a name for your knowledge base"
             isRequired
@@ -108,14 +108,7 @@ export const CreateKnowledgeForm = forwardRef<CreateKnowledgeFormRef, CreateKnow
 
         <div>
           <FormField
-            {...register('description', {
-              onChange: () => {
-                // Only validate on change after first submit attempt
-                if (hasAttemptedSubmit) {
-                  trigger('description')
-                }
-              }
-            })}
+            {...register('description')}
             type="textarea"
             label="Description"
             placeholder="Describe what this knowledge base contains..."

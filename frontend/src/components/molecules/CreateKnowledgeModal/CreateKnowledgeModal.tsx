@@ -43,8 +43,10 @@ export const CreateKnowledgeModal = ({ isOpen, onClose, onSubmit }: CreateKnowle
     }
   }
 
-  const handleConfirm = () => {
-    formRef.current?.submit()
+  const handleConfirm = async () => {
+    if (formRef.current) {
+      await formRef.current.submit()
+    }
   }
 
   return (

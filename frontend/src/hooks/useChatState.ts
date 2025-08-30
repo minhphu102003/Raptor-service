@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { UuidUtils } from '../utils'
 
 export interface ModelSettings {
   model: string
@@ -72,7 +73,7 @@ export const useChatState = () => {
     if (!assistantId) return null
 
     const newSession: ChatSession = {
-      id: Date.now().toString(),
+      id: UuidUtils.generateSessionId(),
       name: sessionName || `New Chat ${sessions.length + 1}`,
       assistantId,
       createdAt: new Date(),
@@ -100,7 +101,7 @@ export const useChatState = () => {
   const addMessage = useCallback((message: Omit<Message, 'id'>) => {
     const newMessage: Message = {
       ...message,
-      id: Date.now().toString()
+      id: UuidUtils.generateMessageId()
     }
 
     setMessages(prev => [...prev, newMessage])
@@ -125,7 +126,7 @@ export const useChatState = () => {
   const addUploadedFile = useCallback((file: Omit<UploadedFile, 'id' | 'uploadedAt'>) => {
     const newFile: UploadedFile = {
       ...file,
-      id: Date.now().toString(),
+      id: UuidUtils.generateV4(),
       uploadedAt: new Date()
     }
 

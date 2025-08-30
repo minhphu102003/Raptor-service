@@ -1,3 +1,4 @@
+import React from 'react'
 import {
   Table,
   TableHeader,
@@ -25,56 +26,96 @@ import { useState } from 'react'
 import { ActionButtons } from '../../molecules'
 
 interface Document {
-  id: string
-  name: string
-  chunkNumber: number
-  uploadDate: string
-  chunkingMethod: string
-  enabled: boolean
-  parsingStatus: 'SUCCESS' | 'PROCESSING' | 'ERROR'
+  doc_id: string
+  source: string
+  tags: string[] | null
+  extra_meta: Record<string, unknown> | null
+  checksum: string
+  created_at: string
+  // Optional properties for UI state
+  enabled?: boolean
+  chunkingMethod?: string
+  chunkNumber?: number
+  parsingStatus?: 'SUCCESS' | 'PROCESSING' | 'ERROR'
+}
+
+interface PaginationInfo {
+  page: number
+  page_size: number
+  total: number
+  pages: number
 }
 
 interface DocumentsTableProps {
+  documents?: Document[]
+  pagination?: PaginationInfo | null
+  loading?: boolean
+  error?: string | null
   onAddDocument: () => void
   onRenameDocument?: (documentId: string, newName: string) => void
   onEditChunkingMethod?: (documentId: string, newMethod: string) => void
   onDeleteDocument?: (documentId: string) => void
   onDownloadDocument?: (documentId: string) => void
+  onPageChange?: (page: number) => void
+  onPageSizeChange?: (pageSize: number) => void
   className?: string
 }
 
-// Mock data - replace with real data from API
-const mockDocuments: Document[] = [
-  {
-    id: '1',
-    name: '20250319-MÔ TÂ...',
-    chunkNumber: 29,
-    uploadDate: '13/08/2025 17:01:11',
-    chunkingMethod: 'General',
-    enabled: true,
-    parsingStatus: 'SUCCESS'
-  },
-  {
-    id: '2',
-    name: '20250319-MÔ TÂ...',
-    chunkNumber: 37,
-    uploadDate: '13/08/2025 09:00:48',
-    chunkingMethod: 'General',
-    enabled: true,
-    parsingStatus: 'SUCCESS'
-  }
-]
+
 
 export const DocumentsTable = ({
+  documents = [],
+  pagination,
+  loading = false,
+  error,
   onAddDocument,
   onRenameDocument,
   onEditChunkingMethod,
   onDeleteDocument,
   onDownloadDocument,
+  onPageChange,
+  onPageSizeChange,
   className
 }: DocumentsTableProps) => {
   const [searchQuery, setSearchQuery] = useState('')
-  const [documents, setDocuments] = useState<Document[]>(mockDocuments)
+  const [localDocuments, setLocalDocuments] = useState<Document[]>([])
+
+  // Update local documents when props change
+  React.useEffect(() => {
+    if (documents) {
+      // Transform API documents to include UI state
+      const transformedDocs = documents.map(doc => ({
+        ...doc,
+        enabled: doc.enabled ?? true,
+        chunkingMethod: doc.chunkingMethod ?? 'General',
+        chunkNumber: doc.chunkNumber ?? 0,
+        parsingStatus: (doc.parsingStatus ?? 'SUCCESS') as 'SUCCESS' | 'PROCESSING' | 'ERROR'
+      }))
+      setLocalDocuments(transformedDocs)
+    }
+  }, [documents])
+
+  // Helper function to get document name from source
+  const getDocumentName = (source: string) => {
+    const parts = source.split('/')
+    const filename = parts[parts.length - 1]
+    // Remove .md extension and truncate if too long
+    const nameWithoutExt = filename.replace('.md', '')
+    return nameWithoutExt.length > 20 ? nameWithoutExt.substring(0, 20) + '...' : nameWithoutExt
+  }
+
+  // Helper function to format date
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })
+  }
 
   const handleRename = (documentId: string) => {
     const newName = prompt('Enter new name:');
@@ -101,9 +142,9 @@ export const DocumentsTable = ({
   };
 
   const handleToggleEnabled = (documentId: string) => {
-    setDocuments(prev =>
+    setLocalDocuments(prev =>
       prev.map(doc =>
-        doc.id === documentId
+        doc.doc_id === documentId
           ? { ...doc, enabled: !doc.enabled }
           : doc
       )
@@ -123,12 +164,20 @@ export const DocumentsTable = ({
     }
   }
 
-  const filteredDocuments = documents.filter(doc =>
-    doc.name.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredDocuments = localDocuments.filter(doc => {
+    const documentName = getDocumentName(doc.source)
+    return documentName.toLowerCase().includes(searchQuery.toLowerCase())
+  })
 
   return (
     <div className={`space-y-4 ${className || ''}`}>
+      {/* Error State */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <Text className="text-red-700">Error loading documents: {error}</Text>
+        </div>
+      )}
+
       {/* Header Actions */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
         <div className="flex gap-2">
@@ -170,61 +219,66 @@ export const DocumentsTable = ({
       </div>
 
       {/* Documents Table */}
-      <Table
-        aria-label="Documents table"
-        selectionMode="multiple"
-      >
-        <TableHeader>
-          <TableColumn className="text-base font-medium">Name</TableColumn>
-          <TableColumn className="text-base font-medium">Chunk Number</TableColumn>
-          <TableColumn className="text-base font-medium">Upload Date</TableColumn>
-          <TableColumn className="text-base font-medium">Chunking method</TableColumn>
-          <TableColumn className="text-base font-medium">Enable</TableColumn>
-          <TableColumn className="text-base font-medium">Parsing Status</TableColumn>
-          <TableColumn className="text-base font-medium">Actions</TableColumn>
-        </TableHeader>
-        <TableBody emptyContent={filteredDocuments.length === 0 ? "No documents found" : undefined}>
-          {filteredDocuments.map((document) => (
-            <TableRow key={document.id}>
+      {loading ? (
+        <div className="flex justify-center items-center py-12">
+          <Text className="text-gray-500">Loading documents...</Text>
+        </div>
+      ) : (
+        <Table
+          aria-label="Documents table"
+          selectionMode="multiple"
+        >
+          <TableHeader>
+            <TableColumn className="text-base font-medium">Name</TableColumn>
+            <TableColumn className="text-base font-medium">Chunk Number</TableColumn>
+            <TableColumn className="text-base font-medium">Upload Date</TableColumn>
+            <TableColumn className="text-base font-medium">Chunking method</TableColumn>
+            <TableColumn className="text-base font-medium">Enable</TableColumn>
+            <TableColumn className="text-base font-medium">Parsing Status</TableColumn>
+            <TableColumn className="text-base font-medium">Actions</TableColumn>
+          </TableHeader>
+          <TableBody emptyContent={filteredDocuments.length === 0 ? "No documents found" : undefined}>
+            {filteredDocuments.map((document) => (
+              <TableRow key={document.doc_id}>
+                <TableCell>
+                  <Text className="text-blue-600 font-medium cursor-pointer hover:underline text-base">
+                    {getDocumentName(document.source)}
+                  </Text>
+                </TableCell>
+                <TableCell>
+                  <Text className="text-base">{document.chunkNumber || 0}</Text>
+                </TableCell>
+                <TableCell>
+                  <Text className="text-gray-600 text-base">{formatDate(document.created_at)}</Text>
+                </TableCell>
               <TableCell>
-                <Text className="text-blue-600 font-medium cursor-pointer hover:underline text-base">
-                  {document.name}
-                </Text>
-              </TableCell>
-              <TableCell>
-                <Text className="text-base">{document.chunkNumber}</Text>
-              </TableCell>
-              <TableCell>
-                <Text className="text-gray-600 text-base">{document.uploadDate}</Text>
-              </TableCell>
-              <TableCell>
-                <Text className="text-base">{document.chunkingMethod}</Text>
+                <Text className="text-base">{document.chunkingMethod || 'General'}</Text>
               </TableCell>
               <TableCell>
                 <Switch
                   isSelected={document.enabled}
-                  onValueChange={() => handleToggleEnabled(document.id)}
+                  onValueChange={() => handleToggleEnabled(document.doc_id)}
                   size="sm"
                 />
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">
                   <Chip
-                    color={getStatusColor(document.parsingStatus)}
+                    color={getStatusColor(document.parsingStatus || 'SUCCESS')}
                     variant="flat"
                     size="md"
                     className="text-sm font-medium"
                   >
-                    {document.parsingStatus}
+                    {document.parsingStatus || 'SUCCESS'}
                   </Chip>
-                  {document.parsingStatus === 'SUCCESS' && (
+                  {(document.parsingStatus || 'SUCCESS') === 'SUCCESS' && (
                     <ReloadIcon className="w-4 h-4 text-green-500" />
                   )}
                 </div>
               </TableCell>
               <TableCell>
                 <ActionButtons
-                  documentId={document.id}
+                  documentId={document.doc_id}
                   onRename={handleRename}
                   onEditChunking={handleEditChunking}
                   onDownload={handleDownload}
@@ -235,28 +289,42 @@ export const DocumentsTable = ({
           ))}
         </TableBody>
       </Table>
+    )}
 
-      {/* Pagination - moved closer to table */}
-      {/* Alternative using CSS classes - replace inline styles with className="pagination-btn" */}
+      {/* Pagination */}
       <div className="flex justify-between items-center mt-2">
-        <Text className="text-gray-600 text-base pl-1">Total {filteredDocuments.length}</Text>
+        <Text className="text-gray-600 text-base pl-1">
+          Total {pagination?.total || filteredDocuments.length}
+        </Text>
         <div className="flex items-center gap-2">
-          <Button variant="bordered" size="md" disabled className="!w-10 !min-w-10 !p-0 tw-w-10 tw-p-0">
+          <Button 
+            variant="bordered" 
+            size="md" 
+            disabled={!pagination || pagination.page <= 1}
+            className="!w-10 !min-w-10 !p-0 tw-w-10 tw-p-0"
+            onPress={() => onPageChange && onPageChange(pagination!.page - 1)}
+          >
             &lt;
           </Button>
           <Button color="primary" size="md" className="!w-10 !min-w-10 tw-w-10">
-            1
+            {pagination?.page || 1}
           </Button>
-          <Button variant="bordered" size="md" disabled className="!w-10 !min-w-10 tw-w-10">
+          <Button 
+            variant="bordered" 
+            size="md" 
+            disabled={!pagination || pagination.page >= pagination.pages}
+            className="!w-10 !min-w-10 tw-w-10"
+            onPress={() => onPageChange && onPageChange(pagination!.page + 1)}
+          >
             &gt;
           </Button>
           <Dropdown>
             <DropdownTrigger>
               <Button variant="bordered" size="md" endContent={<ChevronDownIcon className="w-4 h-4" />}>
-                10 / page
+                {pagination?.page_size || 10} / page
               </Button>
             </DropdownTrigger>
-            <DropdownMenu>
+            <DropdownMenu onAction={(key) => onPageSizeChange && onPageSizeChange(Number(key))}>
               <DropdownItem key="10">10 / page</DropdownItem>
               <DropdownItem key="25">25 / page</DropdownItem>
               <DropdownItem key="50">50 / page</DropdownItem>
