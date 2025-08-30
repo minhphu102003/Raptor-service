@@ -10,27 +10,27 @@ export interface BaseFormFieldProps {
   errorMessage?: string
   className?: string
   autoFocus?: boolean
+  name?: string
+  value?: string
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void
 }
 
 export interface InputFormFieldProps extends BaseFormFieldProps {
   type?: 'input'
-  value?: string
-  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void
 }
 
 export interface TextareaFormFieldProps extends BaseFormFieldProps {
   type: 'textarea'
   minRows?: number
   maxRows?: number
-  value?: string
-  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void
 }
 
 export type FormFieldProps = InputFormFieldProps | TextareaFormFieldProps
 
 // Internal Input component
 const InputField = forwardRef<HTMLInputElement, InputFormFieldProps>(
-  ({ value, onChange, ...props }, ref) => {
+  ({ value, onChange, onBlur, name, ...props }, ref) => {
     return (
       <Input
         label={props.label}
@@ -43,8 +43,10 @@ const InputField = forwardRef<HTMLInputElement, InputFormFieldProps>(
         errorMessage={props.errorMessage}
         className={props.className || 'w-full'}
         autoFocus={props.autoFocus}
-        onChange={onChange}
+        name={name}
         value={value}
+        onChange={onChange}
+        onBlur={onBlur}
         ref={ref}
       />
     )
@@ -53,7 +55,7 @@ const InputField = forwardRef<HTMLInputElement, InputFormFieldProps>(
 
 // Internal Textarea component
 const TextareaField = forwardRef<HTMLInputElement, TextareaFormFieldProps>(
-  ({ minRows, maxRows, value, onChange, ...props }, ref) => {
+  ({ minRows, maxRows, value, onChange, onBlur, name, ...props }, ref) => {
     return (
       <Textarea
         label={props.label}
@@ -68,8 +70,10 @@ const TextareaField = forwardRef<HTMLInputElement, TextareaFormFieldProps>(
         autoFocus={props.autoFocus}
         minRows={minRows}
         maxRows={maxRows}
-        onChange={onChange}
+        name={name}
         value={value}
+        onChange={onChange}
+        onBlur={onBlur}
         // @ts-expect-error - HeroUI Textarea expects different ref type
         ref={ref}
       />

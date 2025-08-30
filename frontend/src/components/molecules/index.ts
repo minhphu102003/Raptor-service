@@ -13,6 +13,7 @@ export { FileUpload } from './FileUpload'
 export { ActionButtons } from './ActionButtons'
 export { SearchAndCreateBar } from './SearchAndCreateBar'
 export { KnowledgeCardsGrid } from './KnowledgeCardsGrid'
+export { KnowledgeCardSkeleton } from './KnowledgeCardSkeleton'
 
 // Re-export types
 export type { FileUploadItem } from './FileUpload/FileUpload'

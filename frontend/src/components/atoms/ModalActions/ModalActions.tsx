@@ -2,7 +2,7 @@ import { Button } from '@heroui/react'
 
 export interface ModalActionsProps {
   onCancel?: () => void
-  onConfirm?: () => void
+  onConfirm?: () => void | Promise<void>
   cancelText?: string
   confirmText?: string
   isLoading?: boolean
