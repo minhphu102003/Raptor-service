@@ -34,7 +34,7 @@ export const Footer = ({ className }: FooterProps) => {
               Intelligent document processing powered by advanced AI technology.
             </Text>
           </div>
-          
+
           <div>
             <Text weight="medium" className="mb-3">Product</Text>
             <div className="space-y-2">
@@ -47,7 +47,7 @@ export const Footer = ({ className }: FooterProps) => {
               ))}
             </div>
           </div>
-          
+
           <div>
             <Text weight="medium" className="mb-3">Company</Text>
             <div className="space-y-2">
@@ -60,7 +60,7 @@ export const Footer = ({ className }: FooterProps) => {
               ))}
             </div>
           </div>
-          
+
           <div>
             <Text weight="medium" className="mb-3">Support</Text>
             <div className="space-y-2">
@@ -74,9 +74,9 @@ export const Footer = ({ className }: FooterProps) => {
             </div>
           </div>
         </div>
-        
+
         <Separator className="my-8 bg-gray-700" />
-        
+
         <Flex align="center" justify="between" className="text-gray-400">
           <Text size="2">
             © 2024 Raptor Service. All rights reserved.

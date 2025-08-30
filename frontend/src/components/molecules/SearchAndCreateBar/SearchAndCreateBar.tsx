@@ -26,7 +26,7 @@ export const SearchAndCreateBar = ({
   }
 
   return (
-    <motion.div 
+    <motion.div
       className={`flex flex-col sm:flex-row gap-4 mb-8 ${className || ''}`}
       variants={itemVariants}
     >

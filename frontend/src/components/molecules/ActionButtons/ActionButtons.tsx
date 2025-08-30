@@ -57,7 +57,7 @@ export const ActionButtons = ({
             </Button>
           </DropdownTrigger>
           <DropdownMenu>
-            <DropdownItem 
+            <DropdownItem
               key="edit-chunking"
               onPress={() => onEditChunking(documentId)}
             >

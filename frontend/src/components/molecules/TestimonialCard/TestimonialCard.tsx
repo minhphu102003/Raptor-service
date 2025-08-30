@@ -11,13 +11,13 @@ interface TestimonialCardProps {
   className?: string
 }
 
-export const TestimonialCard = ({ 
-  quote, 
-  authorName, 
-  authorRole, 
-  authorImage, 
+export const TestimonialCard = ({
+  quote,
+  authorName,
+  authorRole,
+  authorImage,
   rating = 5,
-  className 
+  className
 }: TestimonialCardProps) => {
   return (
     <Card className={`p-6 bg-white border-0 shadow-sm ${className || ''}`}>
@@ -31,7 +31,7 @@ export const TestimonialCard = ({
           "{quote}"
         </Text>
         <Flex align="center" gap="3">
-          <Avatar 
+          <Avatar
             src={authorImage}
             className="w-10 h-10"
           />

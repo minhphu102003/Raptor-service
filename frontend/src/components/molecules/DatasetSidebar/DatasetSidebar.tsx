@@ -1,9 +1,9 @@
 import { Button, Avatar } from '@heroui/react'
 import { Flex } from '@radix-ui/themes'
-import { 
-  FileTextIcon, 
-  MagnifyingGlassIcon, 
-  GearIcon 
+import {
+  FileTextIcon,
+  MagnifyingGlassIcon,
+  GearIcon
 } from '@radix-ui/react-icons'
 import { useState } from 'react'
 
@@ -67,8 +67,8 @@ export const DatasetSidebar = ({ className }: DatasetSidebarProps) => {
                 startContent={<IconComponent className={`w-5 h-5 ${activeItem === item.id ? 'text-blue-700 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`} />}
                 className={`
                   !w-full !justify-start !px-4 !py-3 !font-medium !text-left !border-0 !shadow-none
-                  ${activeItem === item.id 
-                    ? '!bg-blue-100 dark:!bg-blue-900/30 !text-blue-700 dark:!text-blue-400 hover:!bg-blue-100 dark:hover:!bg-blue-900/30' 
+                  ${activeItem === item.id
+                    ? '!bg-blue-100 dark:!bg-blue-900/30 !text-blue-700 dark:!text-blue-400 hover:!bg-blue-100 dark:hover:!bg-blue-900/30'
                     : '!text-gray-700 dark:!text-gray-300 hover:!text-gray-900 dark:hover:!text-gray-100 hover:!bg-gray-100 dark:hover:!bg-gray-800'
                   }
                 `}

@@ -13,7 +13,7 @@ export const Header = ({ className }: HeaderProps) => {
       <div className="px-12 py-4">
         <Flex align="center" justify="between">
           <Logo />
-          
+
           <Flex align="center" gap="4">
             <Navigation />
             <Button color="primary" variant="solid" className="font-medium">

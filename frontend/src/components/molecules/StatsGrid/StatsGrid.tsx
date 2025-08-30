@@ -14,7 +14,7 @@ export const StatsGrid = ({ stats, className }: StatsGridProps) => {
   return (
     <div className={`grid grid-cols-1 md:grid-cols-3 gap-8 max-w-2xl mx-auto ${className || ''}`}>
       {stats.map((stat, index) => (
-        <StatCard 
+        <StatCard
           key={index}
           value={stat.value}
           label={stat.label}

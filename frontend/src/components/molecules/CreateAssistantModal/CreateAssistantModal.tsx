@@ -27,18 +27,18 @@ interface CreateAssistantModalProps {
   className?: string
 }
 
-export const CreateAssistantModal = ({ 
-  isOpen, 
-  onClose, 
-  onCreateAssistant, 
+export const CreateAssistantModal = ({
+  isOpen,
+  onClose,
+  onCreateAssistant,
   knowledgeBases,
-  className 
+  className
 }: CreateAssistantModalProps) => {
   const [activeTab, setActiveTab] = useState('assistant')
   const [assistantName, setAssistantName] = useState('')
   const [assistantDescription, setAssistantDescription] = useState('')
   const [selectedKnowledge, setSelectedKnowledge] = useState<string>('')
-  
+
   // Model settings with defaults
   const [modelSettings, setModelSettings] = useState<ModelSettings>({
     model: 'gpt-4o',
@@ -75,14 +75,14 @@ export const CreateAssistantModal = ({
 
   const handleCreateAssistant = () => {
     if (!assistantName.trim() || !selectedKnowledge) return
-    
+
     const assistantData: AssistantData = {
       name: assistantName.trim(),
       description: assistantDescription.trim(),
       knowledgeBases: [selectedKnowledge], // Convert single selection to array
       modelSettings
     }
-    
+
     onCreateAssistant(assistantData)
     onClose()
   }
@@ -92,8 +92,8 @@ export const CreateAssistantModal = ({
   }
 
   return (
-    <Modal 
-      isOpen={isOpen} 
+    <Modal
+      isOpen={isOpen}
       onClose={onClose}
       size="3xl"
       className={className}
@@ -106,8 +106,8 @@ export const CreateAssistantModal = ({
           </Flex>
         </ModalHeader>
         <ModalBody>
-          <Tabs 
-            selectedKey={activeTab} 
+          <Tabs
+            selectedKey={activeTab}
             onSelectionChange={(key) => setActiveTab(key as string)}
             className="w-full"
           >
@@ -133,15 +133,15 @@ export const CreateAssistantModal = ({
           </Tabs>
         </ModalBody>
         <ModalFooter>
-          <Button 
-            color="danger" 
-            variant="light" 
+          <Button
+            color="danger"
+            variant="light"
             onClick={onClose}
           >
             Cancel
           </Button>
-          <Button 
-            color="primary" 
+          <Button
+            color="primary"
             onClick={handleCreateAssistant}
             isDisabled={!assistantName.trim() || !selectedKnowledge}
           >

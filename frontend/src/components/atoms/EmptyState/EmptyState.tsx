@@ -10,7 +10,7 @@ interface EmptyStateProps {
 
 export const EmptyState = ({ searchQuery, onClearSearch, className }: EmptyStateProps) => {
   return (
-    <motion.div 
+    <motion.div
       className={`text-center py-12 ${className || ''}`}
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}

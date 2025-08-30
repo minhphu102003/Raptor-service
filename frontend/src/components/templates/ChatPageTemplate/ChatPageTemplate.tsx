@@ -83,12 +83,12 @@ export const ChatPageTemplate = ({ className }: ChatPageTemplateProps) => {
 
     setTimeout(() => {
       let responseContent = 'I understand your question. Based on the available knowledge bases, I can help you with that.'
-      
+
       if (files && files.length > 0) {
         const fileNames = files.map(f => f.name).join(', ')
         responseContent += ` I can also see you've uploaded: ${fileNames}. Let me analyze these files along with the relevant documents.`
       }
-      
+
       addMessage({
         type: 'assistant',
         content: responseContent,
@@ -107,9 +107,9 @@ export const ChatPageTemplate = ({ className }: ChatPageTemplateProps) => {
       >
         <KnowledgeHeader />
       </motion.div>
-      
+
       {/* Main Chat Interface - 3 Column Layout */}
-      <motion.div 
+      <motion.div
         className="px-6 py-6"
         variants={containerVariants}
         initial="hidden"
@@ -117,7 +117,7 @@ export const ChatPageTemplate = ({ className }: ChatPageTemplateProps) => {
       >
         <Flex gap="6" className="h-[calc(100vh-120px)] w-full">
           {/* Left Section - Create Assistant (25% width) */}
-          <motion.div 
+          <motion.div
             className="flex-1 min-w-0"
             variants={sectionVariants}
             whileHover={{ scale: 1.01 }}
@@ -125,15 +125,15 @@ export const ChatPageTemplate = ({ className }: ChatPageTemplateProps) => {
           >
             <AssistantCreation onAssistantSelect={handleAssistantSelect} />
           </motion.div>
-          
+
           {/* Middle Section - Chart (25% width) */}
-          <motion.div 
+          <motion.div
             className="flex-1 min-w-0"
             variants={sectionVariants}
             whileHover={{ scale: 1.01 }}
             transition={{ duration: 0.2 }}
           >
-            <ChartSection 
+            <ChartSection
               selectedAssistant={selectedAssistant}
               sessions={sessions}
               selectedSession={selectedSession}
@@ -141,15 +141,15 @@ export const ChatPageTemplate = ({ className }: ChatPageTemplateProps) => {
               onCreateNewSession={createNewSession}
             />
           </motion.div>
-          
+
           {/* Right Section - ChatArea (50% width - 2x wider) */}
-          <motion.div 
+          <motion.div
             className="flex-[2] min-w-0"
             variants={sectionVariants}
             whileHover={{ scale: 1.005 }}
             transition={{ duration: 0.2 }}
           >
-            <ChatArea 
+            <ChatArea
               selectedSession={selectedSession}
               messages={messages}
               onSendMessage={handleSendMessage}

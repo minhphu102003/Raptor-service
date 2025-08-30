@@ -106,7 +106,7 @@ export const FileUpload = ({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
-    
+
     const files = e.dataTransfer.files
     if (files.length > 0) {
       handleFileSelection(files)
@@ -148,7 +148,7 @@ export const FileUpload = ({
           <Text className="text-xs text-gray-500">
             Max {maxFiles} files, up to {formatFileSize(maxSizeBytes)} each
           </Text>
-          
+
           <input
             ref={fileInputRef}
             type="file"

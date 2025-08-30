@@ -35,11 +35,11 @@ export const DatasetPage = () => {
     try {
       // TODO: Implement API call to upload documents
       console.log('Uploading documents:', files)
-      
+
       // For now, just log the files
       // In a real implementation, you would call an API here
       // await uploadDocuments(datasetId, files)
-      
+
       // Show success message
       alert(`${files.length} document(s) uploaded successfully!`)
     } catch (error) {
@@ -94,7 +94,7 @@ export const DatasetPage = () => {
 
   return (
     <KnowledgePageTemplate>
-      <motion.div 
+      <motion.div
         className="h-[calc(100vh-80px)] flex bg-gray-50 dark:bg-gray-900"
         variants={containerVariants}
         initial="hidden"
@@ -104,9 +104,9 @@ export const DatasetPage = () => {
         <motion.div variants={itemVariants}>
           <DatasetSidebar />
         </motion.div>
-        
+
         {/* Main Content */}
-        <motion.div 
+        <motion.div
           className="flex-1 flex flex-col overflow-hidden"
           variants={itemVariants}
         >
@@ -119,10 +119,10 @@ export const DatasetPage = () => {
               Please wait for your files to finish parsing before starting an AI-powered chat.
             </Text>
           </div>
-          
+
           {/* Documents Table */}
           <div className="flex-1 overflow-auto p-8">
-            <DocumentsTable 
+            <DocumentsTable
               onAddDocument={() => setIsAddModalOpen(true)}
               onRenameDocument={handleRenameDocument}
               onEditChunkingMethod={handleEditChunkingMethod}

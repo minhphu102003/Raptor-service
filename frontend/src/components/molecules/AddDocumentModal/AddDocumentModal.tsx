@@ -1,9 +1,9 @@
-import { 
-  Modal, 
-  ModalContent, 
-  ModalHeader, 
-  ModalBody, 
-  ModalFooter, 
+import {
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
   Button
 } from '@heroui/react'
 import { Text } from '@radix-ui/themes'
@@ -60,8 +60,8 @@ export const AddDocumentModal = ({ isOpen, onClose, onSubmit }: AddDocumentModal
   const isValid = selectedFiles.length > 0
 
   return (
-    <Modal 
-      isOpen={isOpen} 
+    <Modal
+      isOpen={isOpen}
       onClose={handleClose}
       size="lg"
       placement="center"
@@ -77,7 +77,7 @@ export const AddDocumentModal = ({ isOpen, onClose, onSubmit }: AddDocumentModal
             Upload documents to add to your knowledge base
           </Text>
         </ModalHeader>
-        
+
         <ModalBody className="py-6">
           <div className="space-y-4">
             <Text size="3" className="text-gray-700 font-medium">
@@ -96,18 +96,18 @@ export const AddDocumentModal = ({ isOpen, onClose, onSubmit }: AddDocumentModal
             )}
           </div>
         </ModalBody>
-        
+
         <ModalFooter>
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="lg"
             onPress={handleClose}
             disabled={isSubmitting}
           >
             Cancel
           </Button>
-          <Button 
-            color="primary" 
+          <Button
+            color="primary"
             size="lg"
             onPress={handleSubmit}
             disabled={!isValid || isSubmitting}

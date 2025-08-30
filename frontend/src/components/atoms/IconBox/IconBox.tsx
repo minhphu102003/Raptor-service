@@ -10,7 +10,7 @@ interface IconBoxProps {
 export const IconBox = ({ children, size = 'md', color = 'blue', className }: IconBoxProps) => {
   const sizeStyles = {
     sm: 'w-8 h-8',
-    md: 'w-12 h-12', 
+    md: 'w-12 h-12',
     lg: 'w-16 h-16'
   }
 

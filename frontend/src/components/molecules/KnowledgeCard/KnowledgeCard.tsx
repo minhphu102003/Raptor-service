@@ -13,14 +13,14 @@ interface KnowledgeCardProps {
   onClick?: () => void
 }
 
-export const KnowledgeCard = ({ 
+export const KnowledgeCard = ({
   id,
-  title, 
-  description, 
-  documentCount, 
-  createdAt, 
+  title,
+  description,
+  documentCount,
+  createdAt,
   className,
-  onClick 
+  onClick
 }: KnowledgeCardProps) => {
   const handleClick = () => {
     if (onClick) {
@@ -40,7 +40,7 @@ export const KnowledgeCard = ({
   }
 
   const cardContent = (
-    <Card 
+    <Card
       className={`px-6 py-6 h-[280px] hover:shadow-lg transition-all duration-200 border border-gray-200 hover:border-indigo-300 cursor-pointer ${className || ''}`}
       onClick={onClick ? handleClick : undefined}
     >
@@ -48,11 +48,11 @@ export const KnowledgeCard = ({
         <Heading size="4" className="text-gray-900 font-bold mb-4" style={{ color: '#1f2937' }}>
           {title}
         </Heading>
-        
+
         <Text className="text-gray-600 leading-relaxed mb-6 line-clamp-3 flex-grow">
           {description}
         </Text>
-        
+
         <Flex align="start" direction={"column"} justify="between" gap={"2"} className="text-base text-gray-500">
           <Flex gap="1">
             <Flex align="center" gap="2">
@@ -60,7 +60,7 @@ export const KnowledgeCard = ({
               <span>{documentCount} documents</span>
             </Flex>
           </Flex>
-          
+
           <Flex gap="1">
             <Flex align="center" gap="2">
               <ClockIcon className="w-4 h-4" />

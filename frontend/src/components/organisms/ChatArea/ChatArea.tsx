@@ -34,7 +34,7 @@ export const ChatArea = ({ className, selectedSession, messages, onSendMessage }
 
     // Send message with files if any
     onSendMessage(inputValue.trim(), selectedFiles.length > 0 ? selectedFiles : undefined)
-    
+
     // Clear input and files
     setInputValue('')
     setSelectedFiles([])
@@ -69,7 +69,7 @@ export const ChatArea = ({ className, selectedSession, messages, onSendMessage }
               </Heading>
             </Flex>
             <Text className="text-gray-600 text-sm mt-1">
-              {selectedSession 
+              {selectedSession
                 ? 'Chat with your AI assistant'
                 : 'Select a session to start chatting'
               }
@@ -118,7 +118,7 @@ export const ChatArea = ({ className, selectedSession, messages, onSendMessage }
                         fallback="AI"
                       />
                     )}
-                    
+
                     <div
                       className={`max-w-[80%] p-4 rounded-lg ${
                         message.type === 'user'
@@ -198,7 +198,7 @@ export const ChatArea = ({ className, selectedSession, messages, onSendMessage }
                   disabled={isLoading || !selectedSession}
                 />
               </div>
-              
+
               {/* File Upload Button */}
               <Popover isOpen={isFileUploadOpen} onOpenChange={setIsFileUploadOpen}>
                 <PopoverTrigger>
@@ -224,7 +224,7 @@ export const ChatArea = ({ className, selectedSession, messages, onSendMessage }
                   </div>
                 </PopoverContent>
               </Popover>
-              
+
               {/* Send Button */}
               <Button
                 color="primary"
@@ -238,7 +238,7 @@ export const ChatArea = ({ className, selectedSession, messages, onSendMessage }
               </Button>
             </Flex>
             <Text className="text-xs text-gray-500 mt-2">
-              {selectedSession 
+              {selectedSession
                 ? "Press Enter to send, Shift+Enter for new line"
                 : "Select a session to start chatting"
               }

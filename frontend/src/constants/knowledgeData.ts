@@ -15,7 +15,7 @@ export const knowledgeBasesData: KnowledgeBase[] = [
     createdAt: '2024-12-27T10:30:00Z'
   },
   {
-    id: '2', 
+    id: '2',
     title: 'Technical Specifications',
     description: 'Detailed technical specifications, architecture diagrams, and system requirements.',
     documentCount: 89,

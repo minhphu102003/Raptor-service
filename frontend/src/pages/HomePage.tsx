@@ -1,8 +1,8 @@
-import { 
-  HeroSection, 
-  FeaturesSection, 
-  TestimonialsSection, 
-  CTASection 
+import {
+  HeroSection,
+  FeaturesSection,
+  TestimonialsSection,
+  CTASection
 } from '../components/organisms'
 import { LandingPageTemplate } from '../components/templates'
 

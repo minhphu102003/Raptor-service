@@ -55,7 +55,7 @@ export const useChatState = () => {
     setSelectedAssistant(assistant)
     setSelectedSession(null) // Clear selected session when changing assistant
     setMessages([]) // Clear messages when changing assistant
-    
+
     // Filter sessions for the selected assistant
     if (assistant) {
       // Load sessions for this assistant (in real app, this would be an API call)
@@ -149,7 +149,7 @@ export const useChatState = () => {
     sessions: currentAssistantSessions,
     messages,
     uploadedFiles,
-    
+
     // Actions
     selectAssistant,
     createNewSession,

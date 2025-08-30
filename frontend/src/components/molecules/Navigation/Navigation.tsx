@@ -17,7 +17,7 @@ export const Navigation = ({ className }: NavigationProps) => {
     <nav className={`hidden md:flex items-center gap-6 ${className || ''}`}>
       {navigationItems.map((item) => (
         item.href.startsWith('#') ? (
-          <NavItem 
+          <NavItem
             key={item.label}
             label={item.label}
             href={item.href}

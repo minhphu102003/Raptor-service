@@ -7,10 +7,10 @@ interface UserAccountProps {
   className?: string
 }
 
-export const UserAccount = ({ 
-  userName = 'John Doe', 
+export const UserAccount = ({
+  userName = 'John Doe',
   userAvatar = 'https://i.pravatar.cc/40?img=5',
-  className 
+  className
 }: UserAccountProps) => {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -22,13 +22,13 @@ export const UserAccount = ({
         className="w-10 h-10 min-w-0 p-0 rounded-full border-none"
         onClick={() => setIsOpen(!isOpen)}
       >
-        <Avatar 
+        <Avatar
           src={userAvatar}
           className="w-8 h-8 rounded-full"
           size="sm"
         />
       </Button>
-      
+
       {isOpen && (
         <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-48">
           <div className="px-3 py-2 border-b border-gray-100">

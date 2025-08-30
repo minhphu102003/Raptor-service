@@ -9,7 +9,7 @@ interface NavItemProps {
 
 export const NavItem = ({ label, href, onClick, className }: NavItemProps) => {
   const baseClasses = "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 cursor-pointer transition-colors"
-  
+
   if (href) {
     return (
       <a href={href} className={`${baseClasses} ${className || ''}`}>
@@ -19,7 +19,7 @@ export const NavItem = ({ label, href, onClick, className }: NavItemProps) => {
   }
 
   return (
-    <Text 
+    <Text
       className={`${baseClasses} ${className || ''}`}
       onClick={onClick}
     >

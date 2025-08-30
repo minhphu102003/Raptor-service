@@ -12,7 +12,7 @@ export const testimonialsData = {
     {
       quote: "The speed and accuracy of document analysis is remarkable. It's become an essential part of our workflow.",
       authorName: "Sarah Chen",
-      authorRole: "Data Scientist", 
+      authorRole: "Data Scientist",
       authorImage: "https://i.pravatar.cc/40?img=2",
       rating: 5
     },
@@ -20,7 +20,7 @@ export const testimonialsData = {
       quote: "Integration was seamless and the results exceeded our expectations. Highly recommend for any team dealing with documents.",
       authorName: "Michael Rodriguez",
       authorRole: "Engineering Lead",
-      authorImage: "https://i.pravatar.cc/40?img=3", 
+      authorImage: "https://i.pravatar.cc/40?img=3",
       rating: 5
     }
   ]

@@ -12,12 +12,12 @@ function AboutPage() {
               About Raptor Service
             </Heading>
             <Text size="5" className="text-gray-600 mb-8 leading-relaxed">
-              Raptor Service is built on cutting-edge RAPTOR (Recursive Abstractive Processing 
-              for Tree-Organized Retrieval) technology that revolutionizes document processing 
+              Raptor Service is built on cutting-edge RAPTOR (Recursive Abstractive Processing
+              for Tree-Organized Retrieval) technology that revolutionizes document processing
               and intelligent information retrieval.
             </Text>
             <Text size="4" className="text-gray-600 leading-relaxed">
-              Our mission is to transform how organizations interact with their documents, 
+              Our mission is to transform how organizations interact with their documents,
               making information more accessible, searchable, and actionable through advanced AI.
             </Text>
           </div>

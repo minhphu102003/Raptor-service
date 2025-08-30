@@ -1,8 +1,8 @@
-import { 
-  Modal, 
-  ModalContent, 
-  ModalHeader, 
-  ModalBody, 
+import {
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
   ModalFooter
 } from '@heroui/react'
 import { Text } from '@radix-ui/themes'
@@ -48,8 +48,8 @@ export const CreateKnowledgeModal = ({ isOpen, onClose, onSubmit }: CreateKnowle
   }
 
   return (
-    <Modal 
-      isOpen={isOpen} 
+    <Modal
+      isOpen={isOpen}
       onClose={handleClose}
       size="md"
       placement="center"
@@ -65,7 +65,7 @@ export const CreateKnowledgeModal = ({ isOpen, onClose, onSubmit }: CreateKnowle
             Create a new knowledge base to organize your documents
           </Text>
         </ModalHeader>
-        
+
         <ModalBody className="py-6">
           <CreateKnowledgeForm
             ref={formRef}
@@ -73,7 +73,7 @@ export const CreateKnowledgeModal = ({ isOpen, onClose, onSubmit }: CreateKnowle
             disabled={formRef.current?.isSubmitting}
           />
         </ModalBody>
-        
+
         <ModalFooter>
           <ModalActions
             onCancel={handleClose}

@@ -17,17 +17,17 @@ export const CTASection = ({ className }: CTASectionProps) => {
             Join thousands of teams already using Raptor Service to revolutionize their document workflows.
           </Text>
           <Flex align="center" justify="center" gap="4">
-            <Button 
-              size="lg" 
-              color="default" 
-              variant="solid" 
+            <Button
+              size="lg"
+              color="default"
+              variant="solid"
               className="bg-white text-indigo-600 hover:bg-gray-50 font-semibold px-8 py-3"
             >
               Start Free Trial
             </Button>
-            <Button 
-              size="lg" 
-              variant="bordered" 
+            <Button
+              size="lg"
+              variant="bordered"
               className="border-white text-white hover:bg-white/10 font-semibold px-8 py-3"
             >
               Contact Sales

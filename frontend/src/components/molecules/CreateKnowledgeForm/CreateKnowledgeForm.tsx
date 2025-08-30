@@ -56,7 +56,7 @@ export const CreateKnowledgeForm = forwardRef<CreateKnowledgeFormRef, CreateKnow
       // Mark that user has attempted to submit
       hasAttemptedSubmitRef.current = true
       setHasAttemptedSubmit(true) // Force re-render
-      
+
       // Use handleSubmit to trigger validation
       handleSubmit(
         // onValid - this runs if form is valid
@@ -105,7 +105,7 @@ export const CreateKnowledgeForm = forwardRef<CreateKnowledgeFormRef, CreateKnow
             errorMessage={errors.name?.message}
           />
         </div>
-        
+
         <div>
           <FormField
             {...register('description', {
