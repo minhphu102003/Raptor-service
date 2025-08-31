@@ -37,7 +37,7 @@ export const KnowledgeCardsGrid = ({
 
   return (
     <motion.div
-      className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 ${className || ''}`}
+      className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 overflow-visible ${className || ''}`}
       variants={{
         visible: {
           transition: {
@@ -68,6 +68,7 @@ export const KnowledgeCardsGrid = ({
               transition: { duration: 0.2 }
             }}
             whileTap={{ scale: 0.98 }}
+            className="overflow-visible"
           >
             <KnowledgeCard
               id={kb.id}
