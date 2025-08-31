@@ -4,11 +4,12 @@ from __future__ import annotations
 from logging.config import fileConfig
 import os
 
-# Import Base (metadata) từ ORM models của bạn
-from infra.db.models import Base  # <-- chỉnh import theo project của bạn
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
+
+# Import Base (metadata) từ ORM models của bạn
+from db.models import Base  # <-- chỉnh import theo project của bạn
 
 # Alembic Config
 config = context.config
