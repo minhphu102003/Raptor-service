@@ -4,14 +4,8 @@ import { PlusIcon, PersonIcon, TrashIcon, GearIcon } from '@radix-ui/react-icons
 import { useState } from 'react'
 import { CreateAssistantModal } from '../../molecules'
 import { motion } from 'framer-motion'
-import type { Assistant, ModelSettings } from '../../../hooks/useChatState'
-
-interface AssistantData {
-  name: string
-  description: string
-  knowledgeBases: string[]
-  modelSettings: ModelSettings
-}
+import { useAssistants, useToast } from '../../../hooks'
+import type { Assistant } from '../../../services/assistantService'
 
 interface AssistantCreationProps {
   className?: string
@@ -20,15 +14,15 @@ interface AssistantCreationProps {
 
 export const AssistantCreation = ({ className, onAssistantSelect }: AssistantCreationProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [assistants, setAssistants] = useState<Assistant[]>([])
   const [selectedAssistant, setSelectedAssistant] = useState<Assistant | null>(null)
 
-  const knowledgeBases = [
-    { id: '1', name: 'Product Documentation', docs: 156 },
-    { id: '2', name: 'Technical Specifications', docs: 89 },
-    { id: '3', name: 'User Manuals', docs: 234 },
-    { id: '4', name: 'Research Papers', docs: 67 }
-  ]
+  const { 
+    assistants, 
+    loading, 
+    error, 
+    deleteAssistant 
+  } = useAssistants()
+  const { success: showSuccessToast, error: showErrorToast } = useToast()
 
   // Animation variants
   const cardVariants = {
@@ -36,21 +30,21 @@ export const AssistantCreation = ({ className, onAssistantSelect }: AssistantCre
     visible: { opacity: 1, y: 0, transition: { duration: 0.3 } }
   }
 
-  const handleCreateAssistant = (data: AssistantData) => {
-    const newAssistant: Assistant = {
-      id: Date.now().toString(),
-      name: data.name,
-      description: data.description,
-      knowledgeBases: data.knowledgeBases,
-      modelSettings: data.modelSettings,
-      createdAt: new Date()
+
+
+  const handleDeleteAssistant = async (id: string) => {
+    try {
+      await deleteAssistant(id)
+      showSuccessToast('Assistant deleted successfully')
+      
+      // Clear selection if the deleted assistant was selected
+      if (selectedAssistant?.assistant_id === id) {
+        setSelectedAssistant(null)
+      }
+    } catch (error) {
+      console.error('Failed to delete assistant:', error)
+      showErrorToast('Failed to delete assistant')
     }
-
-    setAssistants(prev => [...prev, newAssistant])
-  }
-
-  const handleDeleteAssistant = (id: string) => {
-    setAssistants(prev => prev.filter(assistant => assistant.id !== id))
   }
 
   const handleAssistantSelect = (assistant: Assistant) => {
@@ -58,8 +52,15 @@ export const AssistantCreation = ({ className, onAssistantSelect }: AssistantCre
     onAssistantSelect?.(assistant)
   }
 
-  const getKnowledgeBaseNames = (ids: string[]) => {
-    return ids.map(id => knowledgeBases.find(kb => kb.id === id)?.name).filter(Boolean).join(', ')
+  const handleAssistantCreated = () => {
+    showSuccessToast('Assistant created successfully!')
+    // The useAssistants hook will automatically update the list
+  }
+
+  const getKnowledgeBaseNames = (knowledgeBaseIds: string[]) => {
+    // This is a simplified version since we don't have knowledge base details
+    // In a real implementation, you might want to fetch knowledge base details
+    return knowledgeBaseIds.length > 0 ? `${knowledgeBaseIds.length} knowledge base(s)` : 'No knowledge bases'
   }
 
   return (
@@ -94,7 +95,21 @@ export const AssistantCreation = ({ className, onAssistantSelect }: AssistantCre
 
             {/* Assistants List */}
             <div className="flex-1 overflow-y-auto">
-              {assistants.length === 0 ? (
+              {loading ? (
+                <div className="flex flex-col items-center justify-center h-32 text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mb-2"></div>
+                  <Text className="text-gray-500 text-sm">
+                    Loading assistants...
+                  </Text>
+                </div>
+              ) : error ? (
+                <div className="flex flex-col items-center justify-center h-32 text-center">
+                  <PersonIcon className="w-12 h-12 text-red-300 mb-2" />
+                  <Text className="text-red-500 text-sm">
+                    {error}
+                  </Text>
+                </div>
+              ) : assistants.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-32 text-center">
                   <PersonIcon className="w-12 h-12 text-gray-300 mb-2" />
                   <Text className="text-gray-500 text-sm">
@@ -111,12 +126,12 @@ export const AssistantCreation = ({ className, onAssistantSelect }: AssistantCre
                   </Text>
                   {assistants.map((assistant) => (
                     <motion.div
-                      key={assistant.id}
+                      key={assistant.assistant_id}
                       variants={cardVariants}
                       initial="hidden"
                       animate="visible"
                       className={`p-4 rounded-lg border cursor-pointer hover:shadow-sm transition-all ${
-                        selectedAssistant?.id === assistant.id
+                        selectedAssistant?.assistant_id === assistant.assistant_id
                           ? 'border-indigo-500 bg-indigo-50'
                           : 'bg-gray-50 border-gray-200 hover:border-gray-300'
                       }`}
@@ -145,7 +160,7 @@ export const AssistantCreation = ({ className, onAssistantSelect }: AssistantCre
                           isIconOnly
                           onClick={(e) => {
                             e.stopPropagation()
-                            handleDeleteAssistant(assistant.id)
+                            handleDeleteAssistant(assistant.assistant_id)
                           }}
                         >
                           <TrashIcon className="w-4 h-4" />
@@ -157,24 +172,24 @@ export const AssistantCreation = ({ className, onAssistantSelect }: AssistantCre
                         <Flex align="center" gap="2" className="mb-1">
                           <GearIcon className="w-3 h-3 text-gray-400" />
                           <Text className="text-xs text-gray-600">
-                            Model: {assistant.modelSettings.model}
+                            Model: {assistant.model_settings.model}
                           </Text>
                         </Flex>
                         <Flex gap="1" wrap="wrap">
                           <Chip size="sm" variant="flat" className="text-xs">
-                            T: {assistant.modelSettings.temperature}
+                            T: {assistant.model_settings.temperature}
                           </Chip>
                           <Chip size="sm" variant="flat" className="text-xs">
-                            P: {assistant.modelSettings.topP}
+                            P: {assistant.model_settings.topP}
                           </Chip>
                         </Flex>
                       </div>
 
                       <Text className="text-xs text-gray-500 truncate">
-                        Knowledge: {getKnowledgeBaseNames(assistant.knowledgeBases)}
+                        Knowledge: {getKnowledgeBaseNames(assistant.knowledge_bases)}
                       </Text>
                       <Text className="text-xs text-gray-400 mt-1">
-                        Created: {assistant.createdAt.toLocaleDateString()}
+                        Created: {new Date(assistant.created_at).toLocaleDateString()}
                       </Text>
                     </motion.div>
                   ))}
@@ -189,8 +204,7 @@ export const AssistantCreation = ({ className, onAssistantSelect }: AssistantCre
       <CreateAssistantModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onCreateAssistant={handleCreateAssistant}
-        knowledgeBases={knowledgeBases}
+        onAssistantCreated={handleAssistantCreated}
       />
     </div>
   )

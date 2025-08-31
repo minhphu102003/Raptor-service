@@ -5,7 +5,7 @@ import { useChatState, type Assistant } from '../../../hooks/useChatState'
 import type { FileUploadItem } from '../../molecules'
 import { motion } from 'framer-motion'
 
-// Export the Assistant type for use in other components
+
 export type { Assistant } from '../../../hooks/useChatState'
 
 interface ChatPageTemplateProps {

@@ -1,3 +1,4 @@
+from .assistant import AssistantORM, AssistantStatus
 from .base import N_DIM, Base
 from .chat import ChatContextORM, ChatMessageORM, ChatSessionORM, ChatSessionStatus, MessageRole
 from .documents import ChunkORM, DocumentORM
@@ -7,6 +8,8 @@ from .raptor import NodeKind, TreeEdgeORM, TreeNodeChunkORM, TreeNodeORM, TreeOR
 __all__ = [
     "Base",
     "N_DIM",
+    "AssistantORM",
+    "AssistantStatus",
     "DocumentORM",
     "ChunkORM",
     "NodeKind",
