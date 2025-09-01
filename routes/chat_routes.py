@@ -5,16 +5,16 @@ from pydantic import BaseModel
 
 from controllers.dataset_controller import DatasetController
 from repositories.retrieval_repo import RetrievalRepo
-from services.answer_service import AnswerService
-from services.chat_service import ChatService
-from services.embedding_query_service import EmbeddingService
-from services.fpt_llm.client import FPTLLMClient
-from services.gemini_chat.llm import GeminiChatLLM
-from services.model_registry import ModelRegistry
-from services.openai_chat.openai_client_async import OpenAIClientAsync
-from services.query_rewrite_service import QueryRewriteService
-from services.retrieval_service import RetrievalService
-from services.voyage.voyage_client import VoyageEmbeddingClientAsync
+from services.core.chat_service import ChatService
+from services.embedding.embedding_query_service import EmbeddingService
+from services.providers.fpt_llm.client import FPTLLMClient
+from services.providers.gemini_chat.llm import GeminiChatLLM
+from services.providers.model_registry import ModelRegistry
+from services.providers.openai_chat.openai_client_async import OpenAIClientAsync
+from services.providers.voyage.voyage_client import VoyageEmbeddingClientAsync
+from services.retrieval.answer_service import AnswerService
+from services.retrieval.query_rewrite_service import QueryRewriteService
+from services.retrieval.retrieval_service import RetrievalService
 
 router = APIRouter()
 

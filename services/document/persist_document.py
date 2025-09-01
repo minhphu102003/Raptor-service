@@ -9,7 +9,7 @@ except Exception:
 
 from interfaces_adaptor.ports import IDocumentRepository, IFileSource, IUnitOfWork
 
-from .types import PersistDocumentCmd, PersistDocumentResult
+from ..shared.types import PersistDocumentCmd, PersistDocumentResult
 
 
 class DuplicateIdError(Exception):

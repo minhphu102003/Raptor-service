@@ -8,17 +8,17 @@ from openai import AsyncOpenAI
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 
 from services.config import LLMProvider, ModelConfig, get_service_config
-from services.exceptions import (
+from services.providers.fpt_llm.client import ALLOWED_MODELS
+from services.shared.exceptions import (
     ContextLimitExceededError,
     LLMError,
     ModelNotSupportedError,
     ValidationError,
 )
-from services.fpt_llm.client import ALLOWED_MODELS
 from utils.token import context_limit_for, count_input_tokens, fits_context
 
-from .fpt_llm import FPTLLMClient
-from .gemini_chat import GeminiChatLLM
+from ..providers.fpt_llm import FPTLLMClient
+from ..providers.gemini_chat import GeminiChatLLM
 
 load_dotenv()
 glogger = logging.getLogger("gemini")

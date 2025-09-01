@@ -11,7 +11,7 @@ from vertexai.preview import tokenization
 
 from constants.prompt import REWRITE_SYSTEM_PROMPT
 from constants.query import QUERY_HARD_CAP, QUERY_SOFT_CAP, QUERY_TARGET
-from services.fpt_llm.client import FPTLLMClient
+from services.providers.fpt_llm.client import FPTLLMClient
 from utils.packing import count_tokens_total
 
 load_dotenv()
@@ -96,7 +96,9 @@ def fits_context(
 
 
 def _truncate_to_tokens(text: str, target_tokens: int, api_key: Optional[str] = None) -> str:
-    n = count_tokens_total(text, api_key=api_key)
+    n = count_tokens_total(
+        [text], model="voyage-context-3", api_key=api_key or os.getenv("VOYAGEAI_KEY") or ""
+    )
     if n <= target_tokens:
         return text
     ratio = max(0.5, target_tokens / max(1, n))
@@ -105,12 +107,17 @@ def _truncate_to_tokens(text: str, target_tokens: int, api_key: Optional[str] = 
 
 
 def _rewrite_sync(client: "FPTLLMClient", query: str, target_tokens: int) -> str:
+    if not client.model:
+        raise ValueError(
+            "FPTLLMClient.model is not set. Pass model=... in __init__ or set client.model before calling _rewrite_sync()."
+        )
+
     messages = [
         {"role": "system", "content": REWRITE_SYSTEM_PROMPT},
         {"role": "user", "content": f"Target length: ~{target_tokens} tokens.\n\nQuery:\n{query}"},
     ]
     resp = client.chat_completions(
-        model=client.modeL,
+        model=client.model,
         messages=messages,
         temperature=0.0,
         top_p=1.0,
@@ -118,6 +125,11 @@ def _rewrite_sync(client: "FPTLLMClient", query: str, target_tokens: int) -> str
         stream=False,
         extra_body=None,
     )
+
+    # Since stream=False, resp should be a Dict[str, Any]
+    if not isinstance(resp, dict):
+        raise TypeError("Expected dict response when stream=False")
+
     text = resp["choices"][0]["message"]["content"].strip()
     return text
 
@@ -130,8 +142,8 @@ async def llm_rewrite(
 
 
 async def normalize_query(q: str, *, client: "FPTLLMClient") -> str:
-    api_key = os.getenv("VOYAGEAI_KEY")
-    n = count_tokens_total(q, api_key=api_key)
+    api_key = os.getenv("VOYAGEAI_KEY") or ""
+    n = count_tokens_total([q], model="voyage-context-3", api_key=api_key)
     if n <= QUERY_SOFT_CAP:
         return q
     if n <= QUERY_HARD_CAP:

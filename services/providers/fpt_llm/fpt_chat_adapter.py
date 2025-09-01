@@ -6,7 +6,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, System
 from langchain_core.outputs import ChatGeneration, ChatResult
 from pydantic import ConfigDict, PrivateAttr
 
-from services.fpt_llm.client import FPTLLMClient
+from .client import FPTLLMClient
 
 
 def _to_openai_style(messages: List[BaseMessage]):
@@ -58,6 +58,10 @@ class FPTChatModel(BaseChatModel):
             max_tokens=self.max_tokens,
             stream=False,
         )
+        # Since stream=False, resp should be a Dict[str, Any]
+        if not isinstance(resp, dict):
+            raise ValueError("Expected dictionary response when stream=False")
+
         text = resp["choices"][0]["message"]["content"].strip()
         ai = AIMessage(content=text)
         return ChatResult(generations=[ChatGeneration(message=ai)])

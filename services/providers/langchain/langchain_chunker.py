@@ -3,8 +3,8 @@ import time
 from typing import Callable, List, Optional
 
 from interfaces_adaptor.ports import ChunkFnProvider
-from services.chunk_refine_service import llm_edge_fix_and_reallocate
-from services.fpt_llm.fpt_chat_service import get_edge_decider_llm
+from services.document.chunk_refine_service import llm_edge_fix_and_reallocate
+from services.providers.fpt_llm.fpt_chat_service import get_edge_decider_llm
 
 logger = logging.getLogger("raptor.chunking.langchain")
 

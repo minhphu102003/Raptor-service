@@ -2,8 +2,8 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import HTTPException, Request, status
 
-from services.assistant_service import AssistantService
-from services.exceptions import ValidationError
+from services.core.assistant_service import AssistantService
+from services.shared.exceptions import ValidationError
 
 
 class AssistantController:

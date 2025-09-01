@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Tuple
 from sqlalchemy.exc import DBAPIError, IntegrityError
 
 from services.config import get_service_config
-from services.exceptions import (
+from services.shared.exceptions import (
     ClusteringError,
     EmbeddingError,
     PersistenceError,
