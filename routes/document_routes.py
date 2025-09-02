@@ -13,22 +13,22 @@ from fastapi import (
     UploadFile,
     status,
 )
-from openai import BaseModel
+from pydantic import BaseModel
 
 from constants.enum import SummarizeModel
 from controllers.dataset_controller import DatasetController
 from controllers.document_controller import DocumentController
 from interfaces_adaptor.http.dependencies.files import require_markdown_file
 from repositories.retrieval_repo import RetrievalRepo
-from services.answer_service import AnswerService
-from services.embedding_query_service import EmbeddingService
-from services.fpt_llm.client import FPTLLMClient
-from services.gemini_chat.llm import GeminiChatLLM
-from services.model_registry import ModelRegistry
-from services.openai_chat.openai_client_async import OpenAIClientAsync
-from services.query_rewrite_service import QueryRewriteService
-from services.retrieval_service import RetrievalService, RetrieveBody
-from services.voyage.voyage_client import VoyageEmbeddingClientAsync
+from services.embedding.embedding_query_service import EmbeddingService
+from services.providers.fpt_llm.client import FPTLLMClient
+from services.providers.gemini_chat.llm import GeminiChatLLM
+from services.providers.model_registry import ModelRegistry
+from services.providers.openai_chat.openai_client_async import OpenAIClientAsync
+from services.providers.voyage.voyage_client import VoyageEmbeddingClientAsync
+from services.retrieval.answer_service import AnswerService
+from services.retrieval.query_rewrite_service import QueryRewriteService
+from services.retrieval.retrieval_service import RetrievalService, RetrieveBody
 from utils.json import parse_json_opt
 
 router = APIRouter()

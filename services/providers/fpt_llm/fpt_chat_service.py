@@ -1,9 +1,9 @@
 from typing import Optional
 
 from services.config import LLMProvider, ModelConfig, get_service_config
-from services.exceptions import ConfigurationError, ModelNotSupportedError
-from services.fpt_llm.client import FPTLLMClient
-from services.fpt_llm.fpt_chat_adapter import FPTChatModel
+from services.providers.fpt_llm.client import FPTLLMClient
+from services.providers.fpt_llm.fpt_chat_adapter import FPTChatModel
+from services.shared.exceptions import ConfigurationError, ModelNotSupportedError
 
 
 def get_edge_decider_llm(config: Optional[ModelConfig] = None) -> FPTChatModel:

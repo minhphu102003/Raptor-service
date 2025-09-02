@@ -4,7 +4,7 @@ from fastapi import HTTPException, Request, status
 from pydantic import ValidationError
 
 from interfaces_adaptor.http.dtos import IngestMarkdownPayload
-from services.document_service import DocumentService
+from services.document.document_service import DocumentService
 
 storage_log = logging.getLogger("storage")
 

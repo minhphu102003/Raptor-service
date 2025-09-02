@@ -7,7 +7,7 @@ from langchain_core.output_parsers import StrOutputParser
 from underthesea import sent_tokenize as vn_sent_tokenize
 
 from constants.prompt import LLM_EDGE_PROMPT
-from services.openai_chat.openai_chat_service import get_edge_decider_llm
+from services.providers.openai_chat.openai_chat_service import get_edge_decider_llm
 
 try:
 

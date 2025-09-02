@@ -3,7 +3,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from repositories.dataset_repo_pg import DatasetRepoPg
-from services.exceptions import ServiceError, ValidationError
+from services.shared.exceptions import ServiceError, ValidationError
 
 logger = logging.getLogger(__name__)
 

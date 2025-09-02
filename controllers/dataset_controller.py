@@ -4,8 +4,8 @@ from typing import Any, Callable, Optional
 
 from fastapi import HTTPException, Request, status
 
-from services.dataset_service import DatasetService
-from services.exceptions import ServiceError, ValidationError
+from services.core.dataset_service import DatasetService
+from services.shared.exceptions import ServiceError, ValidationError
 
 logger = logging.getLogger(__name__)
 

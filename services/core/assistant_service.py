@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from repositories.assistant_repo_pg import AssistantRepoPg
 from repositories.dataset_repo_pg import DatasetRepoPg
-from services.exceptions import ValidationError
+from services.shared.exceptions import ValidationError
 
 
 class AssistantService:

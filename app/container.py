@@ -2,7 +2,7 @@ from app.config import settings
 from db.session import build_session_factory
 from interfaces_adaptor.gateways.file_source import FileSourceHybrid
 from repositories.document_repo_pg import DocumentRepoPg
-from services.langchain.langchain_chunker import LangChainChunker
+from services.providers.langchain.langchain_chunker import LangChainChunker
 from uow.sqlalchemy_uow import SqlAlchemyUnitOfWork
 
 

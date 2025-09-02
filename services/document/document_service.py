@@ -14,8 +14,13 @@ from services import (
     make_llm,
 )
 from services.config import get_service_config
-from services.exceptions import EmbeddingError, PersistenceError, ServiceError, ValidationError
-from services.voyage import VoyageEmbeddingClientAsync
+from services.providers.voyage import VoyageEmbeddingClientAsync
+from services.shared.exceptions import (
+    EmbeddingError,
+    PersistenceError,
+    ServiceError,
+    ValidationError,
+)
 from utils import gen_doc_id, resolve_dataset_id
 from utils.lll_sumary import get_llm_from_payload
 

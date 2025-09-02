@@ -2,7 +2,7 @@ from typing import Any, Dict, Optional
 
 import requests
 
-from services.fpt_llm.errors import APIError
+from services.providers.fpt_llm.errors import APIError
 
 
 def parse_retry_after(resp: requests.Response) -> Optional[float]:

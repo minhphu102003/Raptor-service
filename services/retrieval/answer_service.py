@@ -15,7 +15,7 @@ from db.models.chat import (
     MessageRole,
 )
 from repositories.retrieval_repo import RetrievalRepo
-from services.retrieval_service import RetrievalService
+from services.retrieval.retrieval_service import RetrievalService
 
 
 class AnswerService:

@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from db.models import EmbeddingOwnerType
 from repositories.embedding_repo_pg import EmbeddingRepoPg
 from services.config import get_service_config
-from services.exceptions import (
+from services.shared.exceptions import (
     DataIntegrityError,
     EmbeddingDimensionError,
     EmbeddingError,

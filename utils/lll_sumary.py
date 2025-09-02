@@ -1,6 +1,6 @@
 from constants.enum import SummarizeModel
 from interfaces_adaptor.http.dtos import IngestMarkdownPayload
-from services.summarizer import make_llm
+from services.clustering.summarizer import make_llm
 
 
 def get_llm_from_payload(payload: IngestMarkdownPayload):
