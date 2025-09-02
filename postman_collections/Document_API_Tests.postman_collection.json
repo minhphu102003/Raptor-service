@@ -1,0 +1,275 @@
+{
+  "info": {
+    "name": "Document API Tests - Optimized",
+    "description": "Comprehensive Postman collection for testing Document APIs with organized test sequences and assertions",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "dataset_id",
+      "value": "test-dataset-123",
+      "type": "string"
+    },
+    {
+      "key": "uploaded_document_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Validate Dataset",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Dataset validation returns 200 OK', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Dataset is valid', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response.valid).to.be.true;",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "dataset_id",
+              "value": "{{dataset_id}}",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/v1/documents/validate-dataset",
+          "host": ["{{base_url}}"],
+          "path": ["v1", "documents", "validate-dataset"]
+        }
+      }
+    },
+    {
+      "name": "02 - Ingest Markdown (Full Parameters) - FIXED",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Document upload returns 200 OK', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Response contains document_id', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response).to.have.property('document_id');",
+              "    pm.collectionVariables.set('uploaded_document_id', response.document_id);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": [],
+              "description": "Select your .md file here"
+            },
+            {
+              "key": "dataset_id",
+              "value": "{{dataset_id}}",
+              "type": "text"
+            },
+            {
+              "key": "source",
+              "value": "Postman API Test",
+              "type": "text"
+            },
+            {
+              "key": "tags",
+              "value": "[\"test\", \"api\", \"postman\"]",
+              "type": "text"
+            },
+            {
+              "key": "extra_meta",
+              "value": "{\"test_type\": \"full_parameters\", \"uploaded_by\": \"postman\"}",
+              "type": "text"
+            },
+            {
+              "key": "build_tree",
+              "value": "true",
+              "type": "text"
+            },
+            {
+              "key": "summary_llm",
+              "value": "DeepSeek-V3",
+              "type": "text"
+            },
+            {
+              "key": "upsert_mode",
+              "value": "upsert",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/v1/documents/ingest-markdown",
+          "host": ["{{base_url}}"],
+          "path": ["v1", "documents", "ingest-markdown"]
+        },
+        "description": "FIXED: Uses proper form data structure for the optimized endpoint"
+      }
+    },
+    {
+      "name": "03 - Ingest Markdown (Minimal) - FIXED",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Minimal upload returns 200 OK', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Response contains required fields', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response).to.have.property('document_id');",
+              "    pm.expect(response).to.have.property('dataset_id');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": [],
+              "description": "Select your .md file here"
+            },
+            {
+              "key": "dataset_id",
+              "value": "{{dataset_id}}",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/v1/documents/ingest-markdown",
+          "host": ["{{base_url}}"],
+          "path": ["v1", "documents", "ingest-markdown"]
+        },
+        "description": "FIXED: Test with only required parameters (dataset_id + file)"
+      }
+    },
+    {
+      "name": "04 - List Documents in Dataset",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Document listing returns 200 OK', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Response contains documents array', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response).to.have.property('documents');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/v1/documents/datasets/{{dataset_id}}/documents?page=1&page_size=20",
+          "host": ["{{base_url}}"],
+          "path": ["v1", "documents", "datasets", "{{dataset_id}}", "documents"],
+          "query": [
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "page_size",
+              "value": "20"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "05 - Retrieve Documents",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"RAPTOR technology\",\n  \"dataset_ids\": [\"{{dataset_id}}\"],\n  \"top_k\": 5,\n  \"score_threshold\": 0.7,\n  \"rewrite_query\": true\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/v1/documents/retrieve",
+          "host": ["{{base_url}}"],
+          "path": ["v1", "documents", "retrieve"]
+        }
+      }
+    },
+    {
+      "name": "06 - Answer Query",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"What is RAPTOR technology?\",\n  \"dataset_ids\": [\"{{dataset_id}}\"],\n  \"top_k\": 5,\n  \"score_threshold\": 0.7,\n  \"rewrite_query\": true,\n  \"answer_model\": \"DeepSeek-V3\",\n  \"temperature\": 0.3,\n  \"max_tokens\": 4000,\n  \"stream\": false\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/v1/documents/answer",
+          "host": ["{{base_url}}"],
+          "path": ["v1", "documents", "answer"]
+        }
+      }
+    }
+  ]
+}

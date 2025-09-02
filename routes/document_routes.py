@@ -13,7 +13,12 @@ from fastapi import (
     UploadFile,
     status,
 )
-from pydantic import BaseModel
+import logging
+
+# Set up logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+from pydantic import BaseModel, Field
 
 from constants.enum import SummarizeModel
 from controllers.dataset_controller import DatasetController
@@ -52,6 +57,51 @@ _model_registry = ModelRegistry(
 _ANSWER = AnswerService(retrieval_svc=_SERVICE, model_registry=_model_registry)
 
 
+class IngestMarkdownForm(BaseModel):
+    dataset_id: str = Field(..., description="Target dataset/knowledge base ID")
+    source: Optional[str] = Field(None, description="Optional source description")
+    tags: Optional[List[str]] = Field(None, description="Optional list of tags")
+    extra_meta: Optional[str] = Field(None, description="Optional additional metadata as JSON string")
+    build_tree: Optional[bool] = Field(True, description="Whether to build RAPTOR tree after ingestion")
+    summary_llm: Optional[SummarizeModel] = Field(None, description="LLM model for summarization")
+    vector_index: Optional[str] = Field(None, description="Vector index configuration as JSON string")
+    upsert_mode: Literal["upsert", "replace", "skip_duplicates"] = Field("upsert", description="How to handle duplicate documents")
+
+    @classmethod
+    def as_form(
+        cls,
+        dataset_id: Annotated[str, Form(...)],
+        source: Annotated[Optional[str], Form()] = None,
+        tags: Annotated[Optional[List[str]], Form()] = None,
+        extra_meta: Annotated[Optional[str], Form()] = None,
+        build_tree: Annotated[Optional[bool], Form()] = True,
+        summary_llm: Annotated[Optional[SummarizeModel], Form()] = None,
+        vector_index: Annotated[Optional[str], Form()] = None,
+        upsert_mode: Annotated[Literal["upsert", "replace", "skip_duplicates"], Form()] = "upsert",
+    ):
+        # Debug logging
+        logger.info("IngestMarkdownForm.as_form called with:")
+        logger.info(f"  dataset_id: {dataset_id}")
+        logger.info(f"  source: {source}")
+        logger.info(f"  tags: {tags}")
+        logger.info(f"  extra_meta: {extra_meta}")
+        logger.info(f"  build_tree: {build_tree}")
+        logger.info(f"  summary_llm: {summary_llm}")
+        logger.info(f"  vector_index: {vector_index}")
+        logger.info(f"  upsert_mode: {upsert_mode}")
+        
+        return cls(
+            dataset_id=dataset_id,
+            source=source,
+            tags=tags,
+            extra_meta=extra_meta,
+            build_tree=build_tree,
+            summary_llm=summary_llm,
+            vector_index=vector_index,
+            upsert_mode=upsert_mode,
+        )
+
+
 @router.get("/datasets/{dataset_id}/documents")
 async def list_documents_by_dataset(
     dataset_id: str,
@@ -82,14 +132,7 @@ async def validate_dataset_for_upload(request: Request, dataset_id: Annotated[st
 async def ingest_markdown(
     request: Request,
     file: Annotated[UploadFile, File(...)],
-    dataset_id: Annotated[str, Form(...)],
-    source: Annotated[Optional[str], Form()] = None,
-    tags: Annotated[Optional[List[str]], Form()] = None,
-    extra_meta: Annotated[Optional[str], Form()] = None,
-    build_tree: Annotated[Optional[bool], Form()] = True,
-    summary_llm: Annotated[Optional[SummarizeModel], Form()] = None,
-    vector_index: Annotated[Optional[str], Form()] = None,
-    upsert_mode: Annotated[Literal["upsert", "replace", "skip_duplicates"], Form()] = "upsert",
+    form_data: Annotated[IngestMarkdownForm, Depends(IngestMarkdownForm.as_form)],
     x_dataset_id: Annotated[Optional[str], Header(alias="X-Dataset-Id")] = None,
 ):
     """
@@ -97,19 +140,18 @@ async def ingest_markdown(
 
     Args:
         file: The Markdown file to upload (.md extension required)
-        dataset_id: The target dataset/knowledge base ID
-        source: Optional source description
-        tags: Optional list of tags for categorization
-        extra_meta: Optional additional metadata as JSON string
-        build_tree: Whether to build RAPTOR tree after ingestion (default: True)
-        summary_llm: LLM model to use for summarization
-        vector_index: Vector index configuration as JSON string
-        upsert_mode: How to handle duplicate documents
+        form_data: Form data containing dataset_id, source, tags, metadata, etc.
         x_dataset_id: Alternative dataset ID via header
 
     Returns:
         Processing result with document ID and processing status
     """
+    # Debug logging
+    logger.info("Received ingest-markdown request")
+    logger.info(f"File: {file.filename if file else 'None'}")
+    logger.info(f"Form data: {form_data}")
+    logger.info(f"X-Dataset-Id header: {x_dataset_id}")
+    
     # Validate file format
     file = await require_markdown_file(file)
 
@@ -118,10 +160,10 @@ async def ingest_markdown(
 
     # Validate dataset_id first (optional step for better UX)
     try:
-        validation = await dataset_controller.validate_dataset(dataset_id)
+        validation = await dataset_controller.validate_dataset(form_data.dataset_id)
         if not validation.get("valid", False):
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid dataset ID: {dataset_id}"
+                status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid dataset ID: {form_data.dataset_id}"
             )
     except HTTPException:
         raise  # Re-raise HTTP exceptions
@@ -129,19 +171,28 @@ async def ingest_markdown(
         pass  # Don't fail the upload if validation fails, just proceed
 
     payload_dict = {
-        "dataset_id": dataset_id,
-        "source": source,
-        "tags": tags,
-        "extra_meta": parse_json_opt("extra_meta", extra_meta),
-        "build_tree": build_tree,
-        "summary_llm": summary_llm,
-        "vector_index": parse_json_opt("vector_index", vector_index),
-        "upsert_mode": upsert_mode,
+        "dataset_id": form_data.dataset_id,
+        "source": form_data.source,
+        "tags": form_data.tags,
+        "extra_meta": parse_json_opt("extra_meta", form_data.extra_meta),
+        "build_tree": form_data.build_tree,
+        "summary_llm": form_data.summary_llm,
+        "vector_index": parse_json_opt("vector_index", form_data.vector_index),
+        "upsert_mode": form_data.upsert_mode,
     }
+
+    # Debug logging
+    logger.info(f"Created payload_dict: {payload_dict}")
 
     payload_dict = {k: v for k, v in payload_dict.items() if v is not None}
 
+    # Debug logging
+    logger.info(f"Filtered payload_dict: {payload_dict}")
+
     payload_json = json.dumps(payload_dict, ensure_ascii=False)
+
+    # Debug logging
+    logger.info(f"Final payload_json: {payload_json}")
 
     result = await DocumentController(request).ingest_markdown(
         file=file,
