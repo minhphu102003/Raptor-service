@@ -1,11 +1,13 @@
-import { Card, CardBody, Button, Avatar, Chip } from '@heroui/react'
+import { Card, CardBody, Button } from '@heroui/react'
 import { Heading, Text, Flex } from '@radix-ui/themes'
-import { PlusIcon, PersonIcon, TrashIcon, GearIcon } from '@radix-ui/react-icons'
+import { PlusIcon, PersonIcon } from '@radix-ui/react-icons'
 import { useState } from 'react'
 import { CreateAssistantModal } from '../../molecules'
-import { motion } from 'framer-motion'
 import { useAssistants, useToast } from '../../../hooks'
 import type { Assistant } from '../../../services/assistantService'
+import { AssistantItem } from '../../atoms/AssistantItem/AssistantItem'
+import { AssistantItemSkeleton } from '../../atoms/AssistantItemSkeleton/AssistantItemSkeleton'
+import { DeleteAssistantModal } from '../../molecules/DeleteAssistantModal/DeleteAssistantModal'
 
 interface AssistantCreationProps {
   className?: string
@@ -15,27 +17,25 @@ interface AssistantCreationProps {
 export const AssistantCreation = ({ className, onAssistantSelect }: AssistantCreationProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedAssistant, setSelectedAssistant] = useState<Assistant | null>(null)
+  const [assistantToDelete, setAssistantToDelete] = useState<Assistant | null>(null)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const { 
     assistants, 
     loading, 
     error, 
-    deleteAssistant 
+    deleteAssistant,
+    refetch
   } = useAssistants()
   const { success: showSuccessToast, error: showErrorToast } = useToast()
 
-  // Animation variants
-  const cardVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.3 } }
-  }
-
-
-
   const handleDeleteAssistant = async (id: string) => {
     try {
+      setIsDeleting(true)
       await deleteAssistant(id)
       showSuccessToast('Assistant deleted successfully')
+      await refetch()
       
       // Clear selection if the deleted assistant was selected
       if (selectedAssistant?.assistant_id === id) {
@@ -44,6 +44,10 @@ export const AssistantCreation = ({ className, onAssistantSelect }: AssistantCre
     } catch (error) {
       console.error('Failed to delete assistant:', error)
       showErrorToast('Failed to delete assistant')
+    } finally {
+      setIsDeleting(false)
+      setIsDeleteModalOpen(false)
+      setAssistantToDelete(null)
     }
   }
 
@@ -52,15 +56,22 @@ export const AssistantCreation = ({ className, onAssistantSelect }: AssistantCre
     onAssistantSelect?.(assistant)
   }
 
-  const handleAssistantCreated = () => {
+  const handleAssistantCreated = (newAssistant: Assistant) => {
     showSuccessToast('Assistant created successfully!')
-    // The useAssistants hook will automatically update the list
+    refetch()
+    if (onAssistantSelect) {
+      onAssistantSelect(newAssistant)
+    }
   }
 
-  const getKnowledgeBaseNames = (knowledgeBaseIds: string[]) => {
-    // This is a simplified version since we don't have knowledge base details
-    // In a real implementation, you might want to fetch knowledge base details
-    return knowledgeBaseIds.length > 0 ? `${knowledgeBaseIds.length} knowledge base(s)` : 'No knowledge bases'
+  const openDeleteModal = (assistant: Assistant) => {
+    setAssistantToDelete(assistant)
+    setIsDeleteModalOpen(true)
+  }
+
+  const closeDeleteModal = () => {
+    setIsDeleteModalOpen(false)
+    setAssistantToDelete(null)
   }
 
   return (
@@ -96,11 +107,14 @@ export const AssistantCreation = ({ className, onAssistantSelect }: AssistantCre
             {/* Assistants List */}
             <div className="flex-1 overflow-y-auto">
               {loading ? (
-                <div className="flex flex-col items-center justify-center h-32 text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mb-2"></div>
-                  <Text className="text-gray-500 text-sm">
-                    Loading assistants...
+                <div className="space-y-3">
+                  <Text className="text-sm font-medium text-gray-700 mb-3">
+                    Your Assistants
                   </Text>
+                  {/* Skeleton loaders */}
+                  {[...Array(3)].map((_, index) => (
+                    <AssistantItemSkeleton key={index} />
+                  ))}
                 </div>
               ) : error ? (
                 <div className="flex flex-col items-center justify-center h-32 text-center">
@@ -125,73 +139,13 @@ export const AssistantCreation = ({ className, onAssistantSelect }: AssistantCre
                     Your Assistants ({assistants.length})
                   </Text>
                   {assistants.map((assistant) => (
-                    <motion.div
+                    <AssistantItem
                       key={assistant.assistant_id}
-                      variants={cardVariants}
-                      initial="hidden"
-                      animate="visible"
-                      className={`p-4 rounded-lg border cursor-pointer hover:shadow-sm transition-all ${
-                        selectedAssistant?.assistant_id === assistant.assistant_id
-                          ? 'border-indigo-500 bg-indigo-50'
-                          : 'bg-gray-50 border-gray-200 hover:border-gray-300'
-                      }`}
-                      onClick={() => handleAssistantSelect(assistant)}
-                    >
-                      <Flex align="center" justify="between" className="mb-2">
-                        <Flex align="center" gap="3">
-                          <Avatar
-                            size="sm"
-                            className="bg-indigo-600 text-white flex-shrink-0"
-                            fallback={assistant.name.charAt(0).toUpperCase()}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <Text className="text-sm font-medium text-gray-900 truncate">
-                              {assistant.name}
-                            </Text>
-                            <Text className="text-xs text-gray-500 truncate">
-                              {assistant.description || 'No description'}
-                            </Text>
-                          </div>
-                        </Flex>
-                        <Button
-                          size="sm"
-                          variant="light"
-                          color="danger"
-                          isIconOnly
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDeleteAssistant(assistant.assistant_id)
-                          }}
-                        >
-                          <TrashIcon className="w-4 h-4" />
-                        </Button>
-                      </Flex>
-
-                      {/* Model Settings Display */}
-                      <div className="mb-2">
-                        <Flex align="center" gap="2" className="mb-1">
-                          <GearIcon className="w-3 h-3 text-gray-400" />
-                          <Text className="text-xs text-gray-600">
-                            Model: {assistant.model_settings.model}
-                          </Text>
-                        </Flex>
-                        <Flex gap="1" wrap="wrap">
-                          <Chip size="sm" variant="flat" className="text-xs">
-                            T: {assistant.model_settings.temperature}
-                          </Chip>
-                          <Chip size="sm" variant="flat" className="text-xs">
-                            P: {assistant.model_settings.topP}
-                          </Chip>
-                        </Flex>
-                      </div>
-
-                      <Text className="text-xs text-gray-500 truncate">
-                        Knowledge: {getKnowledgeBaseNames(assistant.knowledge_bases)}
-                      </Text>
-                      <Text className="text-xs text-gray-400 mt-1">
-                        Created: {new Date(assistant.created_at).toLocaleDateString()}
-                      </Text>
-                    </motion.div>
+                      assistant={assistant}
+                      isSelected={selectedAssistant?.assistant_id === assistant.assistant_id}
+                      onSelect={handleAssistantSelect}
+                      onDelete={() => openDeleteModal(assistant)}
+                    />
                   ))}
                 </div>
               )}
@@ -205,6 +159,15 @@ export const AssistantCreation = ({ className, onAssistantSelect }: AssistantCre
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAssistantCreated={handleAssistantCreated}
+      />
+      
+      {/* Delete Assistant Confirmation Modal */}
+      <DeleteAssistantModal
+        isOpen={isDeleteModalOpen}
+        onClose={closeDeleteModal}
+        onConfirm={() => assistantToDelete && handleDeleteAssistant(assistantToDelete.assistant_id)}
+        assistantName={assistantToDelete?.name || ''}
+        isDeleting={isDeleting}
       />
     </div>
   )

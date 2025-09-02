@@ -4,12 +4,24 @@ import { AssistantCreation, ChatArea, ChartSection } from '../../organisms'
 import { useChatState, type Assistant } from '../../../hooks/useChatState'
 import type { FileUploadItem } from '../../molecules'
 import { motion } from 'framer-motion'
-
+import type { Assistant as ServiceAssistant } from '../../../services/assistantService'
 
 export type { Assistant } from '../../../hooks/useChatState'
 
 interface ChatPageTemplateProps {
   className?: string
+}
+
+// Helper function to convert ServiceAssistant to ChatState Assistant
+const convertServiceAssistantToChatAssistant = (serviceAssistant: ServiceAssistant): Assistant => {
+  return {
+    id: serviceAssistant.assistant_id,
+    name: serviceAssistant.name,
+    description: serviceAssistant.description || '',
+    knowledgeBases: serviceAssistant.knowledge_bases,
+    modelSettings: serviceAssistant.model_settings,
+    createdAt: new Date(serviceAssistant.created_at)
+  }
 }
 
 export const ChatPageTemplate = ({ className }: ChatPageTemplateProps) => {
@@ -43,7 +55,7 @@ export const ChatPageTemplate = ({ className }: ChatPageTemplateProps) => {
       y: 0,
       transition: {
         duration: 0.6,
-        ease: "easeOut"
+        ease: "easeOut" as const
       }
     }
   }
@@ -55,17 +67,18 @@ export const ChatPageTemplate = ({ className }: ChatPageTemplateProps) => {
       y: 0,
       transition: {
         duration: 0.5,
-        ease: "easeOut"
+        ease: "easeOut" as const
       }
     }
   }
 
   // Handle assistant selection from AssistantCreation
-  const handleAssistantSelect = (assistant: Assistant) => {
-    selectAssistant(assistant)
+  const handleAssistantSelect = (assistant: ServiceAssistant) => {
+    const convertedAssistant = convertServiceAssistantToChatAssistant(assistant)
+    selectAssistant(convertedAssistant)
     // Auto-create first session if none exists
     if (sessions.length === 0) {
-      createNewSession(assistant.id, `Chat with ${assistant.name}`)
+      createNewSession(convertedAssistant.id, `Chat with ${convertedAssistant.name}`)
     }
   }
 

@@ -14,6 +14,7 @@ export { ActionButtons } from './ActionButtons'
 export { SearchAndCreateBar } from './SearchAndCreateBar'
 export { KnowledgeCardsGrid } from './KnowledgeCardsGrid'
 export { KnowledgeCardSkeleton } from './KnowledgeCardSkeleton'
+export { DeleteAssistantModal } from './DeleteAssistantModal/DeleteAssistantModal'
 
 // Re-export types
 export type { FileUploadItem } from './FileUpload/FileUpload'

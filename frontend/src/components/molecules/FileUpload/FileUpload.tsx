@@ -2,6 +2,7 @@ import { Button, Card, CardBody } from '@heroui/react'
 import { Text, Flex } from '@radix-ui/themes'
 import { ClipboardIcon, Cross1Icon, FileIcon } from '@radix-ui/react-icons'
 import { useState, useRef } from 'react'
+import { validateMarkdownFile } from '../../../utils/fileValidation'
 
 export interface FileUploadItem {
   id: string
@@ -27,7 +28,7 @@ export const FileUpload = ({
   onRemoveFile,
   maxFiles = 5,
   maxSizeBytes = 10 * 1024 * 1024, // 10MB
-  acceptedTypes = ['image/*', 'application/pdf', '.doc', '.docx', '.txt', '.md'],
+  acceptedTypes = ['text/markdown', 'text/x-markdown', '.md', '.markdown'],
   className
 }: FileUploadProps) => {
   const [isDragging, setIsDragging] = useState(false)
@@ -42,27 +43,17 @@ export const FileUpload = ({
   }
 
   const validateFile = (file: File) => {
-    // Check file size
-    if (file.size > maxSizeBytes) {
-      alert(`File "${file.name}" is too large. Maximum size is ${formatFileSize(maxSizeBytes)}`)
+    // Use the comprehensive Markdown validation
+    const validation = validateMarkdownFile(file)
+    
+    if (!validation.isValid) {
+      alert(`File "${file.name}" is invalid: ${validation.error}`)
       return false
     }
-
-    // Check file type
-    const isValidType = acceptedTypes.some(type => {
-      if (type.startsWith('.')) {
-        return file.name.toLowerCase().endsWith(type.toLowerCase())
-      }
-      if (type.includes('*')) {
-        const baseType = type.split('/')[0]
-        return file.type.startsWith(baseType)
-      }
-      return file.type === type
-    })
-
-    if (!isValidType) {
-      alert(`File "${file.name}" is not supported. Accepted types: ${acceptedTypes.join(', ')}`)
-      return false
+    
+    // Show warnings if any
+    if (validation.warnings && validation.warnings.length > 0) {
+      console.warn(`File "${file.name}" has warnings:`, validation.warnings)
     }
 
     return true
