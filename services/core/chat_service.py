@@ -4,6 +4,7 @@ from uuid import uuid4
 from sqlalchemy import and_, desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from db.models.assistant import AssistantORM
 from db.models.chat import ChatMessageORM, ChatSessionORM, ChatSessionStatus, MessageRole
 
 
@@ -16,15 +17,26 @@ class ChatService:
         dataset_id: str,
         title: str = "New Chat",
         user_id: Optional[str] = None,
+        assistant_id: Optional[str] = None,
         assistant_config: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Create a new chat session"""
 
         session_id = str(uuid4())
 
+        # If assistant_id is provided, get the assistant config from the assistant
+        if assistant_id and not assistant_config:
+            result = await db_session.execute(
+                select(AssistantORM).where(AssistantORM.assistant_id == assistant_id)
+            )
+            assistant = result.scalar_one_or_none()
+            if assistant:
+                assistant_config = assistant.model_settings
+
         chat_session = ChatSessionORM(
             session_id=session_id,
             user_id=user_id,
+            assistant_id=assistant_id,
             dataset_id=dataset_id,
             title=title,
             status=ChatSessionStatus.active,
@@ -48,6 +60,7 @@ class ChatService:
             "session_id": chat_session.session_id,
             "title": chat_session.title,
             "dataset_id": chat_session.dataset_id,
+            "assistant_id": chat_session.assistant_id,
             "status": chat_session.status.value,
             "assistant_config": chat_session.assistant_config,
             "created_at": chat_session.created_at,
@@ -76,6 +89,7 @@ class ChatService:
             "session_id": session.session_id,
             "title": session.title,
             "dataset_id": session.dataset_id,
+            "assistant_id": session.assistant_id,
             "status": session.status.value,
             "assistant_config": session.assistant_config,
             "system_prompt": session.system_prompt,
@@ -89,6 +103,7 @@ class ChatService:
         db_session: AsyncSession,
         user_id: Optional[str] = None,
         dataset_id: Optional[str] = None,
+        assistant_id: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> List[Dict[str, Any]]:
@@ -100,6 +115,8 @@ class ChatService:
             query = query.where(ChatSessionORM.user_id == user_id)
         if dataset_id:
             query = query.where(ChatSessionORM.dataset_id == dataset_id)
+        if assistant_id:
+            query = query.where(ChatSessionORM.assistant_id == assistant_id)
 
         query = query.order_by(desc(ChatSessionORM.updated_at)).limit(limit).offset(offset)
 
@@ -111,6 +128,7 @@ class ChatService:
                 "session_id": session.session_id,
                 "title": session.title,
                 "dataset_id": session.dataset_id,
+                "assistant_id": session.assistant_id,
                 "message_count": session.message_count,
                 "created_at": session.created_at,
                 "updated_at": session.updated_at,
@@ -152,6 +170,7 @@ class ChatService:
             "session_id": session.session_id,
             "title": session.title,
             "dataset_id": session.dataset_id,
+            "assistant_id": session.assistant_id,
             "assistant_config": session.assistant_config,
             "updated_at": session.updated_at,
         }

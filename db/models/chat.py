@@ -9,6 +9,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
+from .assistant import AssistantORM  # Import AssistantORM
 from .base import Base
 
 
@@ -29,6 +30,9 @@ class ChatSessionORM(Base):
 
     session_id: Mapped[str] = mapped_column(String, primary_key=True)
     user_id: Mapped[Optional[str]] = mapped_column(String, index=True)  # For future user management
+    assistant_id: Mapped[Optional[str]] = mapped_column(
+        String, ForeignKey("assistants.assistant_id"), index=True
+    )  # Link to assistant
     dataset_id: Mapped[str] = mapped_column(String, index=True, nullable=False)
     title: Mapped[str] = mapped_column(String, nullable=False)
     status: Mapped[ChatSessionStatus] = mapped_column(
@@ -37,7 +41,7 @@ class ChatSessionORM(Base):
         index=True,
     )
 
-    # Assistant configuration
+    # Assistant configuration (kept for backward compatibility)
     assistant_config: Mapped[Optional[dict]] = mapped_column(JSONB)  # Model, temperature, etc.
     system_prompt: Mapped[Optional[str]] = mapped_column(Text)
 
@@ -55,6 +59,10 @@ class ChatSessionORM(Base):
     # Relationships
     messages: Mapped[List["ChatMessageORM"]] = relationship(
         back_populates="session", cascade="all, delete-orphan", passive_deletes=True
+    )
+    # Relationship to Assistant
+    assistant: Mapped[Optional[AssistantORM]] = relationship(
+        "AssistantORM", foreign_keys=[assistant_id]
     )
 
     __table_args__ = (

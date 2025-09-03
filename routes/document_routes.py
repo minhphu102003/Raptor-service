@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Annotated, List, Literal, Optional
 
 from fastapi import (
@@ -13,7 +14,6 @@ from fastapi import (
     UploadFile,
     status,
 )
-import logging
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -61,11 +61,19 @@ class IngestMarkdownForm(BaseModel):
     dataset_id: str = Field(..., description="Target dataset/knowledge base ID")
     source: Optional[str] = Field(None, description="Optional source description")
     tags: Optional[List[str]] = Field(None, description="Optional list of tags")
-    extra_meta: Optional[str] = Field(None, description="Optional additional metadata as JSON string")
-    build_tree: Optional[bool] = Field(True, description="Whether to build RAPTOR tree after ingestion")
+    extra_meta: Optional[str] = Field(
+        None, description="Optional additional metadata as JSON string"
+    )
+    build_tree: Optional[bool] = Field(
+        True, description="Whether to build RAPTOR tree after ingestion"
+    )
     summary_llm: Optional[SummarizeModel] = Field(None, description="LLM model for summarization")
-    vector_index: Optional[str] = Field(None, description="Vector index configuration as JSON string")
-    upsert_mode: Literal["upsert", "replace", "skip_duplicates"] = Field("upsert", description="How to handle duplicate documents")
+    vector_index: Optional[str] = Field(
+        None, description="Vector index configuration as JSON string"
+    )
+    upsert_mode: Literal["upsert", "replace", "skip_duplicates"] = Field(
+        "upsert", description="How to handle duplicate documents"
+    )
 
     @classmethod
     def as_form(
@@ -89,7 +97,7 @@ class IngestMarkdownForm(BaseModel):
         logger.info(f"  summary_llm: {summary_llm}")
         logger.info(f"  vector_index: {vector_index}")
         logger.info(f"  upsert_mode: {upsert_mode}")
-        
+
         return cls(
             dataset_id=dataset_id,
             source=source,
@@ -151,7 +159,7 @@ async def ingest_markdown(
     logger.info(f"File: {file.filename if file else 'None'}")
     logger.info(f"Form data: {form_data}")
     logger.info(f"X-Dataset-Id header: {x_dataset_id}")
-    
+
     # Validate file format
     file = await require_markdown_file(file)
 
@@ -163,7 +171,8 @@ async def ingest_markdown(
         validation = await dataset_controller.validate_dataset(form_data.dataset_id)
         if not validation.get("valid", False):
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid dataset ID: {form_data.dataset_id}"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid dataset ID: {form_data.dataset_id}",
             )
     except HTTPException:
         raise  # Re-raise HTTP exceptions
