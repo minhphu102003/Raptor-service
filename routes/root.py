@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends
 
 from .assistant_routes import router as assistant_router
-from .chat_routes import router as chat_router
+from .chat_context_routes import router as chat_context_router
+from .chat_message_routes import router as chat_message_router
+from .chat_session_routes import router as chat_session_router
 from .dataset_routes import router as datasets_router
 from .document_routes import router as documents_router
 
@@ -16,6 +18,10 @@ api_v1 = APIRouter(prefix="/v1", dependencies=[Depends(auth_dep)])
 api_v1.include_router(datasets_router, prefix="/datasets", tags=["datasets"])
 api_v1.include_router(documents_router, prefix="/documents", tags=["documents"])
 api_v1.include_router(assistant_router, prefix="/ai", tags=["assistants"])
-api_v1.include_router(chat_router, prefix="/datasets/chat", tags=["chat"])
+# Remove the old chat router and add the new ones
+# api_v1.include_router(chat_router, prefix="/datasets/chat", tags=["chat"])
+api_v1.include_router(chat_session_router, prefix="/datasets/chat", tags=["chat"])
+api_v1.include_router(chat_message_router, prefix="/datasets/chat", tags=["chat"])
+api_v1.include_router(chat_context_router, prefix="/datasets/chat", tags=["chat"])
 
 root_router.include_router(api_v1)

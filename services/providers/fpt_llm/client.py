@@ -116,13 +116,19 @@ class FPTLLMClient:
         ]
 
         def _request_once() -> Dict[str, Any]:
-            return self.chat_completions(
-                model=self.model,
+            # Type assertion: we've already validated self.model above
+            model_name: str = self.model  # type: ignore
+            result = self.chat_completions(
+                model=model_name,
                 messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
                 stream=False,
             )
+            # Ensure we only return the Dict part of the Union
+            if not isinstance(result, dict):
+                raise TypeError(f"Expected dict response, got {type(result)}")
+            return result
 
         resp: Dict[str, Any] = await asyncio.to_thread(_request_once)
 
@@ -245,6 +251,10 @@ class FPTLLMClient:
 
     async def generate(self, *, prompt: str, temperature: float, max_tokens: int) -> str:
         """Gọi non-stream và trả text đã ghép."""
+        if not self.model:
+            raise ValueError(
+                "FPTLLMClient.model is not set. Pass model=... in __init__ or set client.model before calling generate()."
+            )
         async with self._asem:
             payload = {
                 "model": self.model,
@@ -271,6 +281,10 @@ class FPTLLMClient:
         self, *, prompt: str, temperature: float, max_tokens: int
     ) -> AsyncIterator[str]:
         """Gọi stream=True và yield từng delta text."""
+        if not self.model:
+            raise ValueError(
+                "FPTLLMClient.model is not set. Pass model=... in __init__ or set client.model before calling astream()."
+            )
         async with self._asem:
             payload = {
                 "model": self.model,
