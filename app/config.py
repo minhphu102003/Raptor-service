@@ -1,31 +1,42 @@
-from typing import Optional
+import os
 
-from pydantic import BaseModel
+from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class VectorCfg(BaseModel):
-    driver: str = "pgvector"
-    dsn: str
-    name: str = "kb.docs"
-    namespace: str | None = None
-    metric: str = "cosine"
+class VectorSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="VECTOR_")
+
+    dsn: str = ""
+    voyage_api_key: str = ""
+    voyage_model: str = "voyage-context-3"
 
 
 class Settings(BaseSettings):
-    api_prefix: str = ""
-    openai_api_key: str | None = None
-    voyageai_key: Optional[str] = None
+    model_config = SettingsConfigDict(env_prefix="APP_")
 
-    vector: VectorCfg = VectorCfg(dsn="")
-    pg_async_dsn: str | None = None
-    pg_dsn: str | None = None
+    api_prefix: str = "/v1"
+    pg_async_dsn: str = ""
+    debug: bool = False
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_nested_delimiter="__",
-        extra="ignore",
-    )
+    # MCP settings
+    mcp_enabled: bool = True  # Flag to enable/disable MCP server
+
+    vector: VectorSettings = VectorSettings()
+
+    @computed_field
+    @property
+    def db_echo(self) -> bool:
+        return self.debug
 
 
+# Create settings instance
 settings = Settings()
+
+# Override settings from environment variables
+# This allows for runtime configuration
+for key, value in os.environ.items():
+    if key.startswith("APP_"):
+        setattr(settings, key[4:].lower(), value)
+    elif key.startswith("VECTOR_"):
+        setattr(settings.vector, key[7:].lower(), value)
