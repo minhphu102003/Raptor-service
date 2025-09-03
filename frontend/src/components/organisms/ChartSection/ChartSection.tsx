@@ -2,6 +2,8 @@ import { Card, CardBody, Button } from '@heroui/react'
 import { Heading, Text, Flex } from '@radix-ui/themes'
 import { ChatBubbleIcon, PlusIcon, ClockIcon } from '@radix-ui/react-icons'
 import type { Assistant, ChatSession } from '../../../hooks/useChatState'
+import { useState, useEffect } from 'react'
+import { ChatSessionSkeleton } from '../../atoms/ChatSessionSkeleton/ChatSessionSkeleton'
 
 interface ChartSectionProps {
   className?: string
@@ -9,7 +11,8 @@ interface ChartSectionProps {
   sessions: ChatSession[]
   selectedSession: ChatSession | null
   onSelectSession: (session: ChatSession) => void
-  onCreateNewSession: (assistantId: string) => void
+  onCreateNewSession: (assistantId: string, sessionName?: string) => Promise<void>
+  loadingSessions?: boolean
 }
 
 export const ChartSection = ({
@@ -18,12 +21,46 @@ export const ChartSection = ({
   sessions,
   selectedSession,
   onSelectSession,
-  onCreateNewSession
+  onCreateNewSession,
+  loadingSessions = false
 }: ChartSectionProps) => {
-  const handleCreateNewSession = () => {
-    if (selectedAssistant) {
-      onCreateNewSession(selectedAssistant.id)
+  const [isCreatingSession, setIsCreatingSession] = useState(false)
+  const [isSwitchingSession, setIsSwitchingSession] = useState(false)
+  const [previousSelectedSession, setPreviousSelectedSession] = useState<ChatSession | null>(null)
+
+  // Handle session switching with loading effect
+  useEffect(() => {
+    if (selectedSession?.id !== previousSelectedSession?.id) {
+      if (previousSelectedSession !== null) {
+        // Only show loading when actually switching between sessions, not on initial load
+        setIsSwitchingSession(true)
+        const timer = setTimeout(() => {
+          setIsSwitchingSession(false)
+        }, 300) // 300ms loading effect
+        return () => clearTimeout(timer)
+      }
+      setPreviousSelectedSession(selectedSession)
     }
+  }, [selectedSession, previousSelectedSession])
+
+  const handleCreateNewSession = async () => {
+    if (selectedAssistant) {
+      setIsCreatingSession(true)
+      try {
+        await onCreateNewSession(selectedAssistant.id)
+      } finally {
+        setIsCreatingSession(false)
+      }
+    }
+  }
+
+  const handleSelectSession = (session: ChatSession) => {
+    setIsSwitchingSession(true)
+    onSelectSession(session)
+    // Simulate loading time for better UX
+    setTimeout(() => {
+      setIsSwitchingSession(false)
+    }, 300)
   }
 
   return (
@@ -57,13 +94,23 @@ export const ChartSection = ({
                   startContent={<PlusIcon className="w-4 h-4" />}
                   className="w-full"
                   onClick={handleCreateNewSession}
+                  isLoading={isCreatingSession}
+                  disabled={isCreatingSession}
                 >
-                  New Chat Session
+                  {isCreatingSession ? 'Creating...' : 'New Chat Session'}
                 </Button>
 
                 {/* Sessions List */}
                 <div className="flex-1 overflow-y-auto">
-                  {sessions.length === 0 ? (
+                  {loadingSessions || isSwitchingSession ? (
+                    // Loading state when switching sessions or loading assistant sessions
+                    <div className="space-y-2">
+                      <div className="h-4 bg-gray-200 rounded w-1/3 mb-3 animate-pulse"></div>
+                      {[...Array(3)].map((_, index) => (
+                        <ChatSessionSkeleton key={index} />
+                      ))}
+                    </div>
+                  ) : sessions.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-32 text-center">
                       <ChatBubbleIcon className="w-12 h-12 text-gray-300 mb-2" />
                       <Text className="text-gray-500 text-sm">
@@ -81,12 +128,14 @@ export const ChartSection = ({
                       {sessions.map((session) => (
                         <div
                           key={session.id}
-                          className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                          className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 ${
                             selectedSession?.id === session.id
-                              ? 'border-indigo-500 bg-indigo-50'
+                              ? 'border-indigo-500 bg-indigo-50 shadow-sm'
                               : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                          } ${
+                            isSwitchingSession ? 'opacity-50' : ''
                           }`}
-                          onClick={() => onSelectSession(session)}
+                          onClick={() => handleSelectSession(session)}
                         >
                           <Text className="text-sm font-medium text-gray-900 mb-1 line-clamp-1">
                             {session.name}

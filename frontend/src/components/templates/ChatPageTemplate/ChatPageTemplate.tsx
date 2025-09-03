@@ -1,26 +1,31 @@
 import { Flex } from '@radix-ui/themes'
 import { KnowledgeHeader } from '../../organisms'
 import { AssistantCreation, ChatArea, ChartSection } from '../../organisms'
-import { useChatState, type Assistant } from '../../../hooks/useChatState'
+import { useChatState, type ChatSession } from '../../../hooks/useChatState'
 import type { FileUploadItem } from '../../molecules'
 import { motion } from 'framer-motion'
 import type { Assistant as ServiceAssistant } from '../../../services/assistantService'
-
-export type { Assistant } from '../../../hooks/useChatState'
+import { useState, useEffect } from 'react'
 
 interface ChatPageTemplateProps {
   className?: string
 }
 
 // Helper function to convert ServiceAssistant to ChatState Assistant
-const convertServiceAssistantToChatAssistant = (serviceAssistant: ServiceAssistant): Assistant => {
+const convertServiceAssistantToChatAssistant = (serviceAssistant: ServiceAssistant) => {
   return {
     id: serviceAssistant.assistant_id,
+    user_id: serviceAssistant.user_id,
     name: serviceAssistant.name,
     description: serviceAssistant.description || '',
     knowledgeBases: serviceAssistant.knowledge_bases,
     modelSettings: serviceAssistant.model_settings,
-    createdAt: new Date(serviceAssistant.created_at)
+    systemPrompt: serviceAssistant.system_prompt,
+    status: serviceAssistant.status,
+    meta: serviceAssistant.meta,
+    createdAt: serviceAssistant.created_at,
+    updatedAt: serviceAssistant.updated_at || serviceAssistant.created_at,
+    datasets: serviceAssistant.datasets
   }
 }
 
@@ -30,11 +35,34 @@ export const ChatPageTemplate = ({ className }: ChatPageTemplateProps) => {
     selectedSession,
     sessions,
     messages,
+    loadingSessions,
+    loadingMessages,
     selectAssistant,
     createNewSession,
     selectSession,
-    addMessage
+    addMessage,
+    sendMessageToAssistant,
+    sendEnhancedMessageToAssistant
   } = useChatState()
+  
+  const [isSwitchingSession, setIsSwitchingSession] = useState(false)
+  const [previousSelectedSession, setPreviousSelectedSession] = useState<string | null>(null)
+  const [isSendingMessage, setIsSendingMessage] = useState(false)
+
+  // Handle session switching with loading effect
+  useEffect(() => {
+    if (selectedSession?.id !== previousSelectedSession) {
+      if (previousSelectedSession !== null) {
+        // Only show loading when actually switching between sessions, not on initial load
+        setIsSwitchingSession(true)
+        const timer = setTimeout(() => {
+          setIsSwitchingSession(false)
+        }, 300) // 300ms loading effect
+        return () => clearTimeout(timer)
+      }
+      setPreviousSelectedSession(selectedSession?.id || null)
+    }
+  }, [selectedSession, previousSelectedSession])
 
   // Animation variants
   const containerVariants = {
@@ -76,40 +104,89 @@ export const ChatPageTemplate = ({ className }: ChatPageTemplateProps) => {
   const handleAssistantSelect = (assistant: ServiceAssistant) => {
     const convertedAssistant = convertServiceAssistantToChatAssistant(assistant)
     selectAssistant(convertedAssistant)
-    // Auto-create first session if none exists
-    if (sessions.length === 0) {
-      createNewSession(convertedAssistant.id, `Chat with ${convertedAssistant.name}`)
-    }
+    // Sessions will be loaded automatically by the useChatState hook based on the selected assistant
+  }
+
+  // Handle session selection with loading effect
+  const handleSelectSession = (session: ChatSession | null) => {
+    setIsSwitchingSession(true)
+    selectSession(session)
+    // Simulate loading time for better UX
+    setTimeout(() => {
+      setIsSwitchingSession(false)
+      setPreviousSelectedSession(session?.id || null)
+    }, 300)
+  }
+
+  // Wrapper for createNewSession to match expected signature
+  const handleCreateNewSession = async (assistantId: string, sessionName?: string) => {
+    await createNewSession(assistantId, sessionName)
   }
 
   // Handle message sending from ChatArea
-  const handleSendMessage = (content: string, files?: FileUploadItem[]) => {
-    if (!selectedSession) return
-
-    // Add user message
-    addMessage({
-      type: 'user',
-      content,
-      timestamp: new Date(),
-      sessionId: selectedSession.id
-    })
-
-    setTimeout(() => {
-      let responseContent = 'I understand your question. Based on the available knowledge bases, I can help you with that.'
-
-      if (files && files.length > 0) {
-        const fileNames = files.map(f => f.name).join(', ')
-        responseContent += ` I can also see you've uploaded: ${fileNames}. Let me analyze these files along with the relevant documents.`
+  const handleSendMessage = async (content: string, files?: FileUploadItem[]) => {
+    if (!content.trim()) return;
+    
+    if (!selectedSession || !selectedAssistant) {
+      // If there's no session yet, create one with the first message as title
+      if (selectedAssistant) {
+        const truncatedTitle = content.length > 50 
+          ? content.substring(0, 47) + '...' 
+          : content
+        
+        const newSession = await createNewSession(selectedAssistant.id, truncatedTitle)
+        if (newSession) {
+          // After creating the session, add the message
+          addMessage({
+            type: 'user',
+            content,
+            timestamp: new Date(),
+            sessionId: newSession.id
+          })
+        }
       }
+      return
+    }
 
+    setIsSendingMessage(true)
+    
+    try {
+      // Send message to assistant using the new API
+      if (files && files.length > 0) {
+        // If files are attached, use enhanced messaging
+        const fileNames = files.map(f => f.name).join(', ')
+        const additionalContext = {
+          uploadedFiles: fileNames
+        }
+        
+        await sendEnhancedMessageToAssistant(
+          content,
+          selectedSession.id,
+          selectedAssistant.knowledgeBases[0],
+          additionalContext
+        )
+      } else {
+        // Regular messaging
+        await sendMessageToAssistant(
+          content,
+          selectedSession.id,
+          selectedAssistant.knowledgeBases[0]
+        )
+      }
+    } catch (error) {
+      console.error('Failed to send message:', error)
+      // Add error message to UI
       addMessage({
         type: 'assistant',
-        content: responseContent,
+        content: 'Sorry, I encountered an error processing your request. Please try again.',
         timestamp: new Date(),
         sessionId: selectedSession.id
       })
-    }, 1500)
+    } finally {
+      setIsSendingMessage(false)
+    }
   }
+  
   return (
     <div className={`min-h-screen bg-gray-50 ${className || ''}`}>
       {/* Header */}
@@ -150,8 +227,9 @@ export const ChatPageTemplate = ({ className }: ChatPageTemplateProps) => {
               selectedAssistant={selectedAssistant}
               sessions={sessions}
               selectedSession={selectedSession}
-              onSelectSession={selectSession}
-              onCreateNewSession={createNewSession}
+              loadingSessions={loadingSessions}
+              onSelectSession={handleSelectSession}
+              onCreateNewSession={handleCreateNewSession}
             />
           </motion.div>
 
@@ -162,11 +240,24 @@ export const ChatPageTemplate = ({ className }: ChatPageTemplateProps) => {
             whileHover={{ scale: 1.005 }}
             transition={{ duration: 0.2 }}
           >
-            <ChatArea
-              selectedSession={selectedSession}
-              messages={messages}
-              onSendMessage={handleSendMessage}
-            />
+            {isSwitchingSession || loadingMessages ? (
+              // Loading state when switching sessions or loading messages
+              <div className="h-full flex items-center justify-center">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600">
+                    {isSwitchingSession ? 'Loading conversation...' : 'Loading messages...'}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <ChatArea
+                selectedSession={selectedSession}
+                messages={messages}
+                onSendMessage={handleSendMessage}
+                isSendingMessage={isSendingMessage}
+              />
+            )}
           </motion.div>
         </Flex>
       </motion.div>

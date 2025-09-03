@@ -90,7 +90,7 @@ For more information, visit the [API documentation](http://localhost:8000/docs) 
 
 ---
 
-**Created**: $(date)  
-**Version**: 1.0  
-**Author**: API Test Suite  
+**Created**: $(date)
+**Version**: 1.0
+**Author**: API Test Suite
 **Tags**: testing, documentation, raptor, api

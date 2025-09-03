@@ -1,4 +1,4 @@
-import { Button, Avatar, Chip } from '@heroui/react'
+import { Button, Avatar, Chip, Tooltip } from '@heroui/react'
 import { Text, Flex } from '@radix-ui/themes'
 import { TrashIcon, GearIcon } from '@radix-ui/react-icons'
 import { motion } from 'framer-motion'
@@ -51,18 +51,20 @@ export const AssistantItem = ({
             </Text>
           </div>
         </Flex>
-        <Button
-          size="sm"
-          variant="light"
-          color="danger"
-          isIconOnly
-          onClick={(e) => {
-            e.stopPropagation()
-            onDelete(assistant.assistant_id)
-          }}
-        >
-          <TrashIcon className="w-4 h-4" />
-        </Button>
+        <Tooltip content="Delete assistant" placement="top" delay={0}>
+          <Button
+            size="sm"
+            variant="light"
+            color="danger"
+            isIconOnly
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete(assistant.assistant_id)
+            }}
+          >
+            <TrashIcon className="w-4 h-4" />
+          </Button>
+        </Tooltip>
       </Flex>
 
       {/* Description */}
@@ -88,7 +90,7 @@ export const AssistantItem = ({
         </Flex>
       </div>
 
-      <Text className="text-xs text-gray-500 truncate mb-1 pr-3">
+      <Text className="text-xs text-gray-500 truncate mb-1">
         Knowledge: {getKnowledgeBaseNames(assistant.knowledge_bases)}
       </Text>
       <Text className="text-xs text-gray-400">

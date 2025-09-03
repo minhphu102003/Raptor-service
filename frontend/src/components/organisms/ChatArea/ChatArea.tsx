@@ -2,6 +2,8 @@ import { Card, CardBody, Input, Button, Avatar, Popover, PopoverTrigger, Popover
 import { Heading, Text, Flex } from '@radix-ui/themes'
 import { PaperPlaneIcon, ChatBubbleIcon, ClipboardIcon } from '@radix-ui/react-icons'
 import { useState, useRef, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { FileUpload } from '../../molecules'
 import type { FileUploadItem } from '../../molecules'
 import type { Message, ChatSession } from '../../../hooks/useChatState'
@@ -11,11 +13,11 @@ interface ChatAreaProps {
   selectedSession: ChatSession | null
   messages: Message[]
   onSendMessage: (content: string, files?: FileUploadItem[]) => void
+  isSendingMessage?: boolean
 }
 
-export const ChatArea = ({ className, selectedSession, messages, onSendMessage }: ChatAreaProps) => {
+export const ChatArea = ({ className, selectedSession, messages, onSendMessage, isSendingMessage = false }: ChatAreaProps) => {
   const [inputValue, setInputValue] = useState('')
-  const [isLoading] = useState(false)
   const [selectedFiles, setSelectedFiles] = useState<FileUploadItem[]>([])
   const [isFileUploadOpen, setIsFileUploadOpen] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -126,11 +128,61 @@ export const ChatArea = ({ className, selectedSession, messages, onSendMessage }
                           : 'bg-gray-100 text-gray-900'
                       }`}
                     >
-                      <Text className={`text-sm ${
-                        message.type === 'user' ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        {message.content}
-                      </Text>
+                      <div 
+                        className={`text-sm ${
+                          message.type === 'user' ? 'text-white' : 'text-gray-900'
+                        } prose prose-sm max-w-none`}
+                      >
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            p: ({ ...props }) => <p className="mb-3 last:mb-0" {...props} />,
+                            ul: ({ ...props }) => <ul className="list-disc list-inside mb-3" {...props} />,
+                            ol: ({ ...props }) => <ol className="list-decimal list-inside mb-3" {...props} />,
+                            li: ({ ...props }) => <li className="mb-1" {...props} />,
+                            a: ({ ...props }) => <a className="text-blue-500 hover:underline" target="_blank" rel="noopener noreferrer" {...props} />,
+                            code: ({ ...props }) => 
+                              <code 
+                                className="bg-gray-200 dark:bg-gray-700 rounded px-1 py-0.5 text-sm font-mono" 
+                                {...props} 
+                              />,
+                            pre: ({ ...props }) => 
+                              <pre 
+                                className="bg-gray-100 dark:bg-gray-800 rounded p-3 overflow-x-auto text-sm" 
+                                {...props} 
+                              />,
+                            blockquote: ({ ...props }) => 
+                              <blockquote 
+                                className="border-l-4 border-gray-300 pl-4 italic text-gray-600" 
+                                {...props} 
+                              />,
+                            h1: ({ ...props }) => <h1 className="text-2xl font-bold mt-4 mb-2" {...props} />,
+                            h2: ({ ...props }) => <h2 className="text-xl font-bold mt-3 mb-2" {...props} />,
+                            h3: ({ ...props }) => <h3 className="text-lg font-bold mt-2 mb-1" {...props} />,
+                            h4: ({ ...props }) => <h4 className="text-base font-bold mt-2 mb-1" {...props} />,
+                            h5: ({ ...props }) => <h5 className="text-sm font-bold mt-1 mb-1" {...props} />,
+                            h6: ({ ...props }) => <h6 className="text-xs font-bold mt-1 mb-1" {...props} />,
+                            table: ({ ...props }) => <table className="min-w-full border-collapse border border-gray-300 my-2" {...props} />,
+                            th: ({ ...props }) => <th className="border border-gray-300 px-3 py-1 bg-gray-100 font-bold" {...props} />,
+                            td: ({ ...props }) => <td className="border border-gray-300 px-3 py-1" {...props} />,
+                            tr: ({ ...props }) => <tr {...props} />
+                          }}
+                        >
+                          {message.content}
+                        </ReactMarkdown>
+                      </div>
+                      {message.contextPassages && message.contextPassages.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-gray-200">
+                          <Text className="text-xs text-gray-500">Context passages:</Text>
+                          <ul className="mt-1 space-y-1">
+                            {message.contextPassages.slice(0, 3).map((passage, index) => (
+                              <li key={index} className="text-xs text-gray-600 truncate">
+                                • {passage.content && typeof passage.content === 'string' ? passage.content.substring(0, 100) : '...'}...
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                       <Text className={`text-xs mt-2 ${
                         message.type === 'user' ? 'text-indigo-200' : 'text-gray-500'
                       }`}>
@@ -149,7 +201,7 @@ export const ChatArea = ({ className, selectedSession, messages, onSendMessage }
                 ))}
 
                 {/* Loading Indicator */}
-                {isLoading && (
+                {isSendingMessage && (
                   <div className="flex gap-3 justify-start">
                     <Avatar
                       size="sm"
@@ -195,7 +247,7 @@ export const ChatArea = ({ className, selectedSession, messages, onSendMessage }
                   variant="bordered"
                   size="lg"
                   className="w-full"
-                  disabled={isLoading || !selectedSession}
+                  disabled={isSendingMessage || !selectedSession}
                 />
               </div>
 
@@ -231,8 +283,9 @@ export const ChatArea = ({ className, selectedSession, messages, onSendMessage }
                 variant="solid"
                 size="lg"
                 onClick={handleSendMessage}
-                isDisabled={(!inputValue.trim() && selectedFiles.length === 0) || isLoading || !selectedSession}
+                isDisabled={(!inputValue.trim() && selectedFiles.length === 0) || isSendingMessage || !selectedSession}
                 isIconOnly
+                isLoading={isSendingMessage}
               >
                 <PaperPlaneIcon className="w-4 h-4" />
               </Button>

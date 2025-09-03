@@ -49,15 +49,23 @@ class RetrievalService:
             "retrieve.start",
             extra={"span": "retrieve.start", "ms": 0, "extra": {}, **base_extra},
         )
-        api_key = body.byok_voyage_api_key or os.getenv("VOYAGEAI_KEY")
+        api_key: str | None = os.getenv("VOYAGEAI_KEY")
 
         t = time.perf_counter()
-        q_tok_before = count_tokens_total(body.query, model="voyage-context-3", api_key=api_key)
+        q_tok_before = (
+            count_tokens_total([body.query], model="voyage-context-3", api_key=api_key)
+            if api_key
+            else 0
+        )
         q_norm = await self.rewrite.normalize_query(
             body.query,
             byok_voyage_key=body.byok_voyage_api_key,
         )
-        q_tok_after = count_tokens_total(q_norm, model="voyage-context-3", api_key=api_key)
+        q_tok_after = (
+            count_tokens_total([q_norm], model="voyage-context-3", api_key=api_key)
+            if api_key
+            else 0
+        )
         logger.info(
             "rewrite.done",
             extra={
