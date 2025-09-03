@@ -53,7 +53,7 @@ ignore = []
 
 [tool.ruff.lint.isort]
 # chỉnh theo tên package thực tế của bạn (ví dụ infra, interfaces_adaptor, domain, usecases)
-known-first-party = ["app", "repositories", "interfaces_adaptor", "services", "utils", "constants", "db", "uow", "routes", "controllers"]
+known-first-party = ["app", "repositories", "interfaces_adaptor", "services", "utils", "constants", "db", "uow", "routes", "controllers", "dtos"]
 force-sort-within-sections = true
 
 [tool.commitizen]
