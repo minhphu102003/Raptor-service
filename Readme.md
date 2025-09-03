@@ -29,7 +29,7 @@
 
 ### 1.1 Sơ đồ dòng dữ liệu (upload → build)
 
-```mermaid
+``mermaid
 flowchart TD
 %% Gate: only .md
 A["Client Upload<br/>(.md or other)"] --> B{"Is Markdown (.md)?"}
@@ -95,7 +95,7 @@ CHK -- "No → done" --> OUT["Finish build<br/>(persist final tree & index)"]
 
 ### 1.2 Sơ đồ dòng truy vấn
 
-```mermaid
+``mermaid
 flowchart TD
   A["POST /v1/retrieve (dataset_id, query, mode, top_k, expand_k, levels_cap, use_reranker, byok_key)"] --> N["Normalize + sanitize query"]
   N --> E["Embed query (Voyage context-3, dim=1024)"]
@@ -128,7 +128,7 @@ flowchart TD
 
 ### 1.3 Sơ đồ trình tự (Async build)
 
-```mermaid
+``mermaid
 sequenceDiagram
 autonumber
 participant C as Client
@@ -187,7 +187,7 @@ A->>A: Validate request & file-type
       A-->>C: 200 OK
     end
 
-```
+````
 
 ```mermaid
 sequenceDiagram
@@ -233,7 +233,7 @@ sequenceDiagram
 
   A-->>C: 200 OK (results: id, doc_id, level, is_leaf, text, score, ...)
 
-```
+````
 
 ---
 
@@ -671,7 +671,7 @@ curl -X POST "$HOST/v1/document/ingest-markdown"   -H "X-Dataset-Id: ds_demo"   
 
 ## Response (200 OK)
 
-```json
+```
 {
   "answer": "Để cài đặt hệ thống, bạn cần thực hiện các bước sau...",
   "model": "DeepSeek-V3",
@@ -788,8 +788,7 @@ Vòng lặp theo tầng chạy đến khi đạt điều kiện dừng:
 
 ## 6) Mô hình dữ liệu
 
-```mermaid
-classDiagram
+```
 class Document {
 +doc_id: string
 +dataset_id: string
@@ -952,3 +951,86 @@ class Document {
     note for Chunk "Unique: (doc_id, idx)"
     note for Embedding "Index: (dataset_id, owner_type, owner_id)\nHNSW on v (cosine)"
 ```
+
+---
+
+## 7) Model Control Protocol (MCP) Integration
+
+### Overview
+
+The RAPTOR service supports integration with remote LLM services through the Model Context Protocol (MCP). This allows AI assistants to interact with the RAPTOR service and access its functionality through standardized tools.
+
+### Architecture
+
+```
+flowchart TD
+    A[AI Assistant] --> B[MCP Client]
+    B --> C[RAPTOR MCP Server]
+    C --> D[RAPTOR Service]
+    C --> E[Database]
+    C --> F[LLM Services]
+
+    subgraph AI_Ecosystem
+        A
+        B
+    end
+
+    subgraph RAPTOR_Service
+        C
+        D
+        E
+        F
+    end
+```
+
+### Available Tools
+
+The RAPTOR MCP server exposes the following tools:
+
+1. **ingest_document** - Ingest documents into datasets
+2. **retrieve_documents** - Retrieve relevant documents from datasets
+3. **answer_question** - Answer questions using RAPTOR's knowledge
+4. **list_datasets** - List available datasets
+5. **create_chat_session** - Create interactive chat sessions
+
+### SSE Endpoint
+
+The MCP server is accessible through a Server-Sent Events (SSE) endpoint at `/mcp/sse`.
+
+### Example Client Usage
+
+```
+import asyncio
+from services.mcp.client_example import RaptorMCPClient
+
+async def example_usage():
+    async with RaptorMCPClient() as client:
+        # Connect to SSE endpoint
+        async for message in client.connect_sse():
+            print(f"Received: {message}")
+
+            # Call tools
+            result = await client.call_tool(
+                "ingest_document",
+                dataset_id="ds_demo",
+                file_content="Sample document content"
+            )
+            print(f"Result: {result}")
+
+# Run the example
+# asyncio.run(example_usage())
+```
+
+### Configuration
+
+To enable MCP, ensure the required dependencies are installed:
+
+```bash
+pip install mcp[cli]
+```
+
+The MCP service is automatically initialized with the main FastAPI application.
+
+### Extending MCP
+
+To implement your own MCP server, refer to the example implementation in `services/mcp/example_mcp_server.py`. The MCP protocol follows the official Model Context Protocol specification.

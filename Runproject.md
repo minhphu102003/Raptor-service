@@ -1,9 +1,13 @@
 ### Chạy dev & prod
 
-Dev (auto reload):
+### Development
 
-```
+```bash
+# Run with MCP enabled (default)
 uv run fastapi dev app/main.py
+
+# Run with MCP disabled
+uv run fastapi dev app/main.py --disable-mcp
 ```
 
 Prod (đơn giản):
@@ -31,6 +35,7 @@ uv run pre-commit run --all-files
 ```
 
 ### Run commit with package
+
 ```
 uv run cz commit
 ```
