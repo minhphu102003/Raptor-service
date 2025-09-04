@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import JSONResponse
 
 from .assistant_routes import router as assistant_router
 from .chat_context_routes import router as chat_context_router
@@ -12,6 +13,17 @@ def auth_dep(): ...
 
 
 root_router = APIRouter()
+
+
+# Health check endpoint - placed at the root level
+@root_router.get("/health")
+async def health_check(request: Request):
+    """Health check endpoint"""
+    return JSONResponse(
+        status_code=200,
+        content={"status": "healthy", "service": "raptor-service", "version": "1.0.0"},
+    )
+
 
 api_v1 = APIRouter(prefix="/v1", dependencies=[Depends(auth_dep)])
 

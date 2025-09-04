@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+
+# Production build
+dist/
+
+# Logs
+logs/
+*.log
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+
+# Temporary folders
+tmp/
+temp/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Environment files
+.env*
+
+# Vite
+.vite/
+
+# Testing
+coverage/
+*.lcov
+
+# Build output
+dist/
+build/
+
+# Typescript cache
+*.tsbuildinfo
