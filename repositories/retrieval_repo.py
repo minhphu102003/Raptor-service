@@ -13,6 +13,192 @@ class RetrievalRepo:
     def _vec_param(vec: Sequence[float]) -> list[float]:
         return list(vec)
 
+    async def get_node_metadata(
+        self,
+        *,
+        node_id: str,
+    ) -> dict | None:
+        """
+        Get metadata for a specific tree node.
+        """
+        sql = text("""
+            SELECT
+                tn.node_id,
+                tn.tree_id,
+                tn.level,
+                tn.kind,
+                tn.text,
+                tn.meta,
+                t.dataset_id,
+                (SELECT COUNT(*) FROM tree_edges te WHERE te.parent_id = tn.node_id) AS children_count,
+                (SELECT te.parent_id FROM tree_edges te WHERE te.child_id = tn.node_id LIMIT 1) AS parent_id
+            FROM tree_nodes tn
+            JOIN trees t ON tn.tree_id = t.tree_id
+            WHERE tn.node_id = :node_id
+        """)
+        res = await self.session.execute(sql, {"node_id": node_id})
+        row = res.mappings().first()
+        return dict(row) if row else None
+
+    async def get_node_children(
+        self,
+        *,
+        node_id: str,
+    ) -> list[dict]:
+        """
+        Get child nodes for a specific tree node.
+        """
+        sql = text("""
+            SELECT
+                tn.node_id,
+                tn.tree_id,
+                tn.level,
+                tn.kind,
+                tn.text,
+                te.child_id
+            FROM tree_edges te
+            JOIN tree_nodes tn ON tn.node_id = te.child_id
+            WHERE te.parent_id = :node_id
+            ORDER BY tn.level, tn.node_id
+        """)
+        res = await self.session.execute(sql, {"node_id": node_id})
+        rows = res.mappings().all()
+        return [dict(r) for r in rows]
+
+    async def get_node_parent(
+        self,
+        *,
+        node_id: str,
+    ) -> dict | None:
+        """
+        Get parent node for a specific tree node.
+        """
+        sql = text("""
+            SELECT
+                tn.node_id,
+                tn.tree_id,
+                tn.level,
+                tn.kind,
+                tn.text
+            FROM tree_nodes tn
+            JOIN tree_edges te ON tn.node_id = te.parent_id
+            WHERE te.child_id = :node_id
+            LIMIT 1
+        """)
+        res = await self.session.execute(sql, {"node_id": node_id})
+        row = res.mappings().first()
+        return dict(row) if row else None
+
+    async def get_node_siblings(
+        self,
+        *,
+        node_id: str,
+    ) -> list[dict]:
+        """
+        Get sibling nodes for a specific tree node.
+        """
+        sql = text("""
+            SELECT
+                tn.node_id,
+                tn.tree_id,
+                tn.level,
+                tn.kind,
+                tn.text
+            FROM tree_nodes tn
+            JOIN tree_edges te ON tn.node_id = te.child_id
+            WHERE te.parent_id = (
+                SELECT te2.parent_id
+                FROM tree_edges te2
+                WHERE te2.child_id = :node_id
+                LIMIT 1
+            )
+            AND tn.node_id != :node_id
+            ORDER BY tn.level, tn.node_id
+        """)
+        res = await self.session.execute(sql, {"node_id": node_id})
+        rows = res.mappings().all()
+        return [dict(r) for r in rows]
+
+    async def get_path_to_root(
+        self,
+        *,
+        node_id: str,
+    ) -> list[dict]:
+        """
+        Get the path from a node to the root of the tree.
+
+        This function traverses up the tree from the given node to the root,
+        returning information about each node in the path.
+        """
+        sql = text("""
+            WITH RECURSIVE path_to_root AS (
+                -- Base case: start with the given node
+                SELECT
+                    tn.node_id,
+                    tn.tree_id,
+                    tn.level,
+                    tn.kind,
+                    tn.text,
+                    0 as depth
+                FROM tree_nodes tn
+                WHERE tn.node_id = :node_id
+
+                UNION ALL
+
+                -- Recursive case: find parent nodes
+                SELECT
+                    tn.node_id,
+                    tn.tree_id,
+                    tn.level,
+                    tn.kind,
+                    tn.text,
+                    ptr.depth + 1
+                FROM tree_nodes tn
+                JOIN tree_edges te ON tn.node_id = te.parent_id
+                JOIN path_to_root ptr ON te.child_id = ptr.node_id
+                WHERE ptr.depth < 10  -- Prevent infinite recursion
+            )
+            SELECT
+                node_id,
+                tree_id,
+                level,
+                kind,
+                text
+            FROM path_to_root
+            ORDER BY depth
+        """)
+        res = await self.session.execute(sql, {"node_id": node_id})
+        rows = res.mappings().all()
+        return [dict(r) for r in rows]
+
+    async def get_node_texts_by_ids(
+        self,
+        *,
+        node_ids: list[str],
+    ) -> list[dict]:
+        """
+        Get texts for multiple tree nodes by their IDs.
+
+        Args:
+            node_ids: List of node IDs to retrieve texts for
+
+        Returns:
+            List of dictionaries containing node_id and text
+        """
+        if not node_ids:
+            return []
+
+        sql = text("""
+            SELECT
+                node_id,
+                text
+            FROM tree_nodes
+            WHERE node_id = ANY(:node_ids)
+        """)
+        res = await self.session.execute(sql, {"node_ids": node_ids})
+        rows = res.mappings().all()
+        return [dict(r) for r in rows]
+
     async def search_summary_nodes(
         self,
         *,

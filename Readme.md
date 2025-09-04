@@ -29,7 +29,7 @@
 
 ### 1.1 Sơ đồ dòng dữ liệu (upload → build)
 
-``mermaid
+```mermaid
 flowchart TD
 %% Gate: only .md
 A["Client Upload<br/>(.md or other)"] --> B{"Is Markdown (.md)?"}
@@ -95,7 +95,7 @@ CHK -- "No → done" --> OUT["Finish build<br/>(persist final tree & index)"]
 
 ### 1.2 Sơ đồ dòng truy vấn
 
-``mermaid
+```mermaid
 flowchart TD
   A["POST /v1/retrieve (dataset_id, query, mode, top_k, expand_k, levels_cap, use_reranker, byok_key)"] --> N["Normalize + sanitize query"]
   N --> E["Embed query (Voyage context-3, dim=1024)"]
@@ -128,7 +128,7 @@ flowchart TD
 
 ### 1.3 Sơ đồ trình tự (Async build)
 
-``mermaid
+```mermaid
 sequenceDiagram
 autonumber
 participant C as Client
@@ -187,7 +187,7 @@ A->>A: Validate request & file-type
       A-->>C: 200 OK
     end
 
-````
+```
 
 ```mermaid
 sequenceDiagram
@@ -233,7 +233,7 @@ sequenceDiagram
 
   A-->>C: 200 OK (results: id, doc_id, level, is_leaf, text, score, ...)
 
-````
+```
 
 ---
 
@@ -788,7 +788,8 @@ Vòng lặp theo tầng chạy đến khi đạt điều kiện dừng:
 
 ## 6) Mô hình dữ liệu
 
-```
+```mermaid
+classDiagram
 class Document {
 +doc_id: string
 +dataset_id: string
@@ -962,7 +963,7 @@ The RAPTOR service supports integration with remote LLM services through the Mod
 
 ### Architecture
 
-```
+```mermaid
 flowchart TD
     A[AI Assistant] --> B[MCP Client]
     B --> C[RAPTOR MCP Server]
@@ -999,7 +1000,7 @@ The MCP server is accessible through a Server-Sent Events (SSE) endpoint at `/mc
 
 ### Example Client Usage
 
-```
+```language: python
 import asyncio
 from services.mcp.client_example import RaptorMCPClient
 

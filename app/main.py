@@ -2,11 +2,16 @@ import argparse
 from contextlib import asynccontextmanager
 import logging
 import logging.config
+import os
 from pathlib import Path
 import sys
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+# Load environment variables from .env file
+load_dotenv()
 
 from app.config import settings
 from app.container import Container
@@ -35,10 +40,24 @@ except ImportError:
 
 # Remove the inline setup_logging function and use the imported one instead
 
-ASYNC_DSN = settings.pg_async_dsn or settings.vector.dsn.replace(
-    "postgresql://", "postgresql+asyncpg://"
-)
+# Fix the DSN to ensure it uses the correct driver
+ASYNC_DSN = settings.pg_async_dsn or settings.vector.dsn
+
+# Ensure the DSN uses the correct driver
+if ASYNC_DSN and not ASYNC_DSN.startswith("postgresql+psycopg://"):
+    if ASYNC_DSN.startswith("postgresql://"):
+        ASYNC_DSN = ASYNC_DSN.replace("postgresql://", "postgresql+psycopg://")
+    elif ASYNC_DSN.startswith("postgresql+asyncpg://"):
+        ASYNC_DSN = ASYNC_DSN.replace("postgresql+asyncpg://", "postgresql+psycopg://")
+
 VECTOR_DSN = settings.vector.dsn
+
+# Ensure the DSN uses the correct driver
+if VECTOR_DSN and not VECTOR_DSN.startswith("postgresql+psycopg://"):
+    if VECTOR_DSN.startswith("postgresql://"):
+        VECTOR_DSN = VECTOR_DSN.replace("postgresql://", "postgresql+psycopg://")
+    elif VECTOR_DSN.startswith("postgresql+asyncpg://"):
+        VECTOR_DSN = VECTOR_DSN.replace("postgresql+asyncpg://", "postgresql+psycopg://")
 
 
 @asynccontextmanager
@@ -67,6 +86,7 @@ async def lifespan(app: FastAPI):
             # Create MCP server using local implementation
             from mcp.raptor_mcp_server import RaptorMCPService
 
+            # Now we require the container to be passed to RaptorMCPService
             mcp_service = RaptorMCPService(container=app.state.container)
             app.state.mcp_service = mcp_service
             app.state.mcp_server = mcp_service.mcp if hasattr(mcp_service, "mcp") else None
