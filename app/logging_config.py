@@ -26,11 +26,21 @@ def setup_logging() -> None:
                 "fmt": '%(asctime)s | %(levelname)s | %(name)s | %(client_addr)s - "%(request_line)s" %(status_code)s',
                 "datefmt": "%Y-%m-%d %H:%M:%S",
             },
+            "detailed": {
+                "()": "uvicorn.logging.DefaultFormatter",
+                "fmt": "%(asctime)s | %(levelname)s | %(name)s | %(funcName)s:%(lineno)d | %(message)s",
+                "datefmt": "%Y-%m-%d %H:%M:%S",
+            },
         },
         "handlers": {
             "console": {
                 "class": "logging.StreamHandler",
                 "formatter": "default",
+                "stream": "ext://sys.stdout",
+            },
+            "console_detailed": {
+                "class": "logging.StreamHandler",
+                "formatter": "detailed",
                 "stream": "ext://sys.stdout",
             },
             "app_daily": {
@@ -45,6 +55,12 @@ def setup_logging() -> None:
                 "when": "midnight",
                 "backupCount": 7,
             },
+            "debug_file": {
+                "()": "app.logging_setup.timed_handler_factory",
+                "filename": "logs/debug.log",
+                "when": "midnight",
+                "backupCount": 7,
+            },
         },
         "loggers": {
             "raptor": {"level": "INFO", "handlers": ["console", "app_daily"], "propagate": False},
@@ -52,7 +68,9 @@ def setup_logging() -> None:
             "gemini": {"level": "INFO", "handlers": ["console", "app_daily"], "propagate": False},
             "storage": {"level": "INFO", "handlers": ["console", "app_daily"], "propagate": False},
             "cluster": {"level": "INFO", "handlers": ["console", "app_daily"], "propagate": False},
-            "raptor.retrieve": {"handlers": ["console"], "level": "INFO", "propagate": False},
+            "raptor.retrieve": {"handlers": ["console", "debug_file"], "level": "DEBUG", "propagate": False},
+            "raptor.retrieve.db": {"handlers": ["console_detailed", "debug_file"], "level": "DEBUG", "propagate": False},
+            "raptor.retrieve.response": {"handlers": ["console_detailed", "debug_file"], "level": "DEBUG", "propagate": False},
             "raptor.chunking.langchain": {
                 "handlers": ["console"],
                 "level": "INFO",

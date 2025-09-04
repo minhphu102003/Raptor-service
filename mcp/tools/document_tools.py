@@ -48,8 +48,7 @@ async def answer_question(
             # Initialize services needed for retrieval and answering
             fpt_client = FPTLLMClient(model="DeepSeek-V3")
             voyage_client = VoyageEmbeddingClientAsync(model="voyage-context-3", out_dim=1024)
-            rewrite_svc = QueryRewriteService(fpt_client=fpt_client)
-            retrieval_svc = RetrievalService(rewrite_svc=rewrite_svc, embed_svc=voyage_client)
+            retrieval_svc = RetrievalService(embed_svc=voyage_client)
 
             # Create the retrieval body
             retrieve_body = RetrieveBody(

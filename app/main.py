@@ -138,6 +138,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Include the root router with the API prefix
 app.include_router(root_router, prefix=settings.api_prefix)
 
 # Add MCP routes if available and enabled

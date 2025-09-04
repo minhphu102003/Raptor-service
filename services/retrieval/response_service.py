@@ -1,3 +1,4 @@
+import logging
 import time
 from typing import Any, Dict, List, Optional, Union
 
@@ -7,6 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from db.models.chat import MessageRole
 from repositories.retrieval_repo import RetrievalRepo
 from services.retrieval.retrieval_service import RetrieveBody
+
+logger = logging.getLogger("raptor.retrieve.response")
+
+
+def _ms_since(t0: float) -> float:
+    return round((time.perf_counter() - t0) * 1000.0, 1)
 
 
 class ResponseService:
@@ -29,18 +36,23 @@ class ResponseService:
         stream: Optional[bool] = None,
     ) -> Union[StreamingResponse, Dict[str, Any]]:
         start_time = time.time()
+        logger.info(f"Starting answer_with_context for query: {body.query}")
 
         user_message = None
         if session_id:
+            logger.debug(f"Saving user message for session: {session_id}")
             user_message = await self.message_service.save_message(
                 db_session, session_id, MessageRole.user, body.query
             )
 
+        logger.debug("Starting retrieval process")
         ret = await self.retrieval_svc.retrieve(body, repo=repo)
         if ret.get("code") != 200:
+            logger.error(f"Retrieval failed with code: {ret.get('code', 500)}")
             return {"code": ret.get("code", 500), "error": "retrieval failed"}
 
         passages = ret.get("data", [])
+        logger.debug(f"Retrieved {len(passages)} passages")
 
         normalized_passages = []
         for passage in passages:
@@ -51,6 +63,7 @@ class ResponseService:
 
         if session_id:
             # Get session context
+            logger.debug(f"Building enhanced context prompt for session: {session_id}")
             from services.retrieval.answer_service import AnswerService
 
             answer_service = AnswerService(
@@ -65,6 +78,7 @@ class ResponseService:
                 session_context, body.query, passages_text
             )
         else:
+            logger.debug("Building standard prompt")
             prompt = await self.prompt_service.build_prompt(
                 body.query, normalized_passages[: body.top_k]
             )
@@ -73,6 +87,8 @@ class ResponseService:
         temp_to_use = temperature or 0.7
         tokens_to_use = max_tokens or 8000
         stream_to_use = stream if stream is not None else False
+
+        logger.debug(f"Using model: {model_to_use}, temperature: {temp_to_use}, max_tokens: {tokens_to_use}")
 
         client = self.model_registry.get_client(model_to_use, body)
 
@@ -83,18 +99,27 @@ class ResponseService:
         }
 
         if stream_to_use:
+            logger.debug("Streaming response enabled")
 
             async def _gen():
+                logger.debug("Starting streaming generation")
                 response_chunks = []
+                # Track LLM generation time specifically
+                llm_start_time = time.perf_counter()
                 async for chunk in client.astream(
                     prompt=prompt, temperature=temp_to_use, max_tokens=tokens_to_use
                 ):
                     response_chunks.append(chunk)
                     yield chunk
+                
+                llm_time = _ms_since(llm_start_time)
+                logger.info(f"LLM streaming generation completed in {llm_time}ms", 
+                           extra={"span": "llm.streaming", "ms": llm_time})
 
                 if session_id:
                     full_response = "".join(response_chunks)
                     processing_time = int((time.time() - start_time) * 1000)
+                    logger.debug(f"Saving assistant message for session: {session_id}")
                     await self.message_service.save_message(
                         db_session,
                         session_id,
@@ -109,16 +134,24 @@ class ResponseService:
 
             return StreamingResponse(_gen(), media_type="text/plain")
 
+        logger.debug("Starting non-streaming generation")
+        # Track LLM generation time specifically
+        llm_start_time = time.perf_counter()
         text = await client.generate(
             prompt=prompt,
             temperature=temp_to_use,
             max_tokens=tokens_to_use,
         )
+        llm_time = _ms_since(llm_start_time)
+        logger.info(f"LLM generation completed in {llm_time}ms", 
+                   extra={"span": "llm.generation", "ms": llm_time})
 
         processing_time = int((time.time() - start_time) * 1000)
+        logger.debug(f"Generation completed in {processing_time}ms")
 
         assistant_message = None
         if session_id:
+            logger.debug(f"Saving assistant message for session: {session_id}")
             assistant_message = await self.message_service.save_message(
                 db_session,
                 session_id,
@@ -139,6 +172,7 @@ class ResponseService:
             "passages": normalized_passages[: body.top_k],
             "session_id": session_id,
             "processing_time_ms": processing_time,
+            "llm_generation_time_ms": llm_time,  # Include LLM time in response
         }
 
         if user_message and assistant_message:
@@ -160,14 +194,20 @@ class ResponseService:
                 "created_at": assistant_message.created_at,
             }
 
+        logger.info(f"Answer with context completed in {processing_time}ms")
         return response_data
 
     async def answer(self, body, repo: RetrievalRepo) -> Union[StreamingResponse, Dict[str, Any]]:
+        logger.info(f"Starting answer for query: {body.query}")
+        start_time = time.time()
+        
         ret = await self.retrieval_svc.retrieve(body, repo=repo)
         if ret.get("code") != 200:
+            logger.error(f"Retrieval failed with code: {ret.get('code', 500)}")
             return {"code": ret.get("code", 500), "error": "retrieval failed"}
 
         passages = ret.get("data", [])
+        logger.debug(f"Retrieved {len(passages)} passages")
 
         normalized_passages = []
         for passage in passages:
@@ -176,30 +216,58 @@ class ResponseService:
                 normalized_passage["content"] = passage["text"]
             normalized_passages.append(normalized_passage)
 
+        logger.debug("Building prompt")
         prompt = await self.prompt_service.build_prompt(
             body.query, normalized_passages[: body.top_k]
         )
 
         client = self.model_registry.get_client(body.answer_model, body)
+        
+        logger.debug(f"Using model: {body.answer_model}")
+        
         if body.stream:
+            logger.debug("Streaming response enabled")
 
             async def _gen():
+                logger.debug("Starting streaming generation")
+                response_chunks = []
+                # Track LLM generation time specifically
+                llm_start_time = time.perf_counter()
                 async for chunk in client.astream(
                     prompt=prompt, temperature=body.temperature, max_tokens=body.max_tokens
                 ):
+                    response_chunks.append(chunk)
                     yield chunk
+                
+                llm_time = _ms_since(llm_start_time)
+                logger.info(f"LLM streaming generation completed in {llm_time}ms", 
+                           extra={"span": "llm.streaming", "ms": llm_time})
 
             return StreamingResponse(_gen(), media_type="text/plain")
 
+        logger.debug("Starting non-streaming generation")
+        # Track LLM generation time specifically
+        llm_start_time = time.perf_counter()
         text = await client.generate(
             prompt=prompt,
             temperature=body.temperature,
             max_tokens=body.max_tokens,
         )
-        return {
+        llm_time = _ms_since(llm_start_time)
+        logger.info(f"LLM generation completed in {llm_time}ms", 
+                   extra={"span": "llm.generation", "ms": llm_time})
+        
+        processing_time = int((time.time() - start_time) * 1000)
+        logger.debug(f"Generation completed in {processing_time}ms")
+
+        result = {
             "answer": text,
             "model": body.answer_model,
             "top_k": body.top_k,
             "mode": body.mode,
             "passages": normalized_passages[: body.top_k],
+            "llm_generation_time_ms": llm_time,  # Include LLM time in response
         }
+        
+        logger.info(f"Answer completed in {processing_time}ms")
+        return result

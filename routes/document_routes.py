@@ -41,9 +41,8 @@ router = APIRouter()
 _FPT = FPTLLMClient(model="DeepSeek-V3")
 _VOY = VoyageEmbeddingClientAsync(model="voyage-context-3", out_dim=1024)
 
-_REWRITE = QueryRewriteService(fpt_client=_FPT)
 _EMBED = EmbeddingService(voyage_client_async=_VOY)
-_SERVICE = RetrievalService(rewrite_svc=_REWRITE, embed_svc=_EMBED)
+_SERVICE = RetrievalService(embed_svc=_EMBED)
 _GEMINI = GeminiChatLLM(model="gemini-2.5-flash")
 _OPENAI = OpenAIClientAsync(model="gpt-4o-mini")
 

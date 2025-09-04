@@ -18,3 +18,5 @@ export { LoadingSpinner } from './LoadingSpinner'
 export { ConfirmDialog } from './ConfirmDialog'
 export { AssistantItem } from './AssistantItem/AssistantItem'
 export { AssistantItemSkeleton } from './AssistantItemSkeleton/AssistantItemSkeleton'
+export { TypingIndicator } from './TypingIndicator';
+export { MessageContent } from './MessageContent';

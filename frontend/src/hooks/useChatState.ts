@@ -242,6 +242,42 @@ export const useChatState = () => {
   // Send message to assistant
   const sendMessageToAssistant = useCallback(async (content: string, sessionId: string, datasetId: string) => {
     try {
+      // Create user message first and add it immediately to the UI
+      const userMessage: Message = {
+        id: UuidUtils.generateMessageId(),
+        sessionId: sessionId,
+        type: 'user',
+        content: content,
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, userMessage]);
+      
+      // Update session message count immediately
+      if (selectedSession) {
+        setSessions(prev => prev.map(session =>
+          session.id === selectedSession.id
+            ? {
+                ...session,
+                messageCount: session.messageCount + 1,
+                lastMessage: content
+              }
+            : session
+        ))
+      }
+
+      // Create a temporary loading message for the assistant
+      const loadingMessageId = UuidUtils.generateMessageId();
+      const loadingMessage: Message = {
+        id: loadingMessageId,
+        sessionId: sessionId,
+        type: 'assistant',
+        content: 'typing', // Special marker for loading state
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, loadingMessage]);
+
       // Create message request
       const messageRequest: ChatMessageRequest = {
         query: content,
@@ -261,22 +297,16 @@ export const useChatState = () => {
       const response = await chatService.sendMessage(messageRequest)
       console.log('Processed chat response:', response)
       
+      // Remove the loading message
+      setMessages(prev => prev.filter(msg => msg.id !== loadingMessageId));
+      
       // Handle the response based on its format
-      let userMessage: Message;
       let assistantMessage: Message;
       
       // Check if response has the expected structure with user_message and assistant_message
       if (response && typeof response === 'object' && 'user_message' in response && 'assistant_message' in response && 
           response.user_message && response.assistant_message) {
         // New format with saved messages
-        userMessage = {
-          id: response.user_message.message_id,
-          sessionId: response.user_message.session_id,
-          type: 'user' as const,
-          content: response.user_message.content,
-          timestamp: new Date(response.user_message.created_at)
-        };
-        
         assistantMessage = {
           id: response.assistant_message.message_id,
           sessionId: response.assistant_message.session_id,
@@ -287,15 +317,6 @@ export const useChatState = () => {
         };
       } else {
         // Handle direct response format (answer, passages, etc.)
-        // Fallback to old format (generate IDs client-side)
-        userMessage = {
-          id: UuidUtils.generateMessageId(),
-          sessionId: sessionId,
-          type: 'user',
-          content: content,
-          timestamp: new Date()
-        };
-        
         assistantMessage = {
           id: UuidUtils.generateMessageId(),
           sessionId: sessionId,
@@ -310,16 +331,15 @@ export const useChatState = () => {
         };
       }
       
-      setMessages(prev => [...prev, userMessage, assistantMessage])
+      setMessages(prev => [...prev, assistantMessage])
       
-      // Update session message count
+      // Update session message count for assistant message
       if (selectedSession) {
         setSessions(prev => prev.map(session =>
           session.id === selectedSession.id
             ? {
                 ...session,
-                messageCount: session.messageCount + 2,
-                lastMessage: content
+                messageCount: session.messageCount + 1
               }
             : session
         ))
@@ -328,6 +348,30 @@ export const useChatState = () => {
       return { userMessage, assistantMessage }
     } catch (error) {
       console.error('Failed to send message:', error)
+      
+      // Add error message to UI
+      const errorMessage: Message = {
+        id: UuidUtils.generateMessageId(),
+        sessionId: sessionId,
+        type: 'assistant',
+        content: 'Sorry, I encountered an error processing your request. Please try again.',
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, errorMessage])
+      
+      // Update session message count for error message
+      if (selectedSession) {
+        setSessions(prev => prev.map(session =>
+          session.id === selectedSession.id
+            ? {
+                ...session,
+                messageCount: session.messageCount + 1
+              }
+            : session
+        ))
+      }
+      
       throw error
     }
   }, [selectedAssistant, selectedSession])
@@ -335,6 +379,42 @@ export const useChatState = () => {
   // Send enhanced message to assistant
   const sendEnhancedMessageToAssistant = useCallback(async (content: string, sessionId: string, datasetId: string, additionalContext?: Record<string, unknown>) => {
     try {
+      // Create user message first and add it immediately to the UI
+      const userMessage: Message = {
+        id: UuidUtils.generateMessageId(),
+        sessionId: sessionId,
+        type: 'user',
+        content: content,
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, userMessage]);
+      
+      // Update session message count immediately
+      if (selectedSession) {
+        setSessions(prev => prev.map(session =>
+          session.id === selectedSession.id
+            ? {
+                ...session,
+                messageCount: session.messageCount + 1,
+                lastMessage: content
+              }
+            : session
+        ))
+      }
+
+      // Create a temporary loading message for the assistant
+      const loadingMessageId = UuidUtils.generateMessageId();
+      const loadingMessage: Message = {
+        id: loadingMessageId,
+        sessionId: sessionId,
+        type: 'assistant',
+        content: 'typing', // Special marker for loading state
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, loadingMessage]);
+
       // Create enhanced message request
       const messageRequest: EnhancedChatMessageRequest = {
         query: content,
@@ -357,22 +437,16 @@ export const useChatState = () => {
       const response = await chatService.sendEnhancedMessage(messageRequest)
       console.log('Processed enhanced chat response:', response)
       
+      // Remove the loading message
+      setMessages(prev => prev.filter(msg => msg.id !== loadingMessageId));
+      
       // Handle the response based on its format
-      let userMessage: Message;
       let assistantMessage: Message;
       
       // Check if response has the expected structure with user_message and assistant_message
       if (response && typeof response === 'object' && 'user_message' in response && 'assistant_message' in response && 
           response.user_message && response.assistant_message) {
         // New format with saved messages
-        userMessage = {
-          id: response.user_message.message_id,
-          sessionId: response.user_message.session_id,
-          type: 'user' as const,
-          content: response.user_message.content,
-          timestamp: new Date(response.user_message.created_at)
-        };
-        
         assistantMessage = {
           id: response.assistant_message.message_id,
           sessionId: response.assistant_message.session_id,
@@ -383,15 +457,6 @@ export const useChatState = () => {
         };
       } else {
         // Handle direct response format (answer, passages, etc.)
-        // Fallback to old format (generate IDs client-side)
-        userMessage = {
-          id: UuidUtils.generateMessageId(),
-          sessionId: sessionId,
-          type: 'user',
-          content: content,
-          timestamp: new Date()
-        };
-        
         assistantMessage = {
           id: UuidUtils.generateMessageId(),
           sessionId: sessionId,
@@ -406,16 +471,15 @@ export const useChatState = () => {
         };
       }
       
-      setMessages(prev => [...prev, userMessage, assistantMessage])
+      setMessages(prev => [...prev, assistantMessage])
       
-      // Update session message count
+      // Update session message count for assistant message
       if (selectedSession) {
         setSessions(prev => prev.map(session =>
           session.id === selectedSession.id
             ? {
                 ...session,
-                messageCount: session.messageCount + 2,
-                lastMessage: content
+                messageCount: session.messageCount + 1
               }
             : session
         ))
@@ -424,6 +488,30 @@ export const useChatState = () => {
       return { userMessage, assistantMessage }
     } catch (error) {
       console.error('Failed to send enhanced message:', error)
+      
+      // Add error message to UI
+      const errorMessage: Message = {
+        id: UuidUtils.generateMessageId(),
+        sessionId: sessionId,
+        type: 'assistant',
+        content: 'Sorry, I encountered an error processing your request. Please try again.',
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, errorMessage])
+      
+      // Update session message count for error message
+      if (selectedSession) {
+        setSessions(prev => prev.map(session =>
+          session.id === selectedSession.id
+            ? {
+                ...session,
+                messageCount: session.messageCount + 1
+              }
+            : session
+        ))
+      }
+      
       throw error
     }
   }, [selectedAssistant, selectedSession])
