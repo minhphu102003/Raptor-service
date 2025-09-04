@@ -1,15 +1,10 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Query, Request, status
 
 from controllers.dataset_controller import DatasetController
 
 router = APIRouter()
-
-
-def auth_dep():
-    """Authentication dependency placeholder"""
-    pass
 
 
 @router.get("/", summary="List all datasets")

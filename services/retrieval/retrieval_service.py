@@ -31,8 +31,7 @@ class RetrieveBody(BaseModel):
 
 
 class RetrievalService:
-    def __init__(self, rewrite_svc, embed_svc, reranker_svc=None):
-        self.rewrite = rewrite_svc
+    def __init__(self, embed_svc, reranker_svc=None):
         self.embed = embed_svc
         self.reranker = reranker_svc
 
@@ -51,39 +50,17 @@ class RetrievalService:
         )
         api_key: str | None = os.getenv("VOYAGEAI_KEY")
 
-        t = time.perf_counter()
-        q_tok_before = (
-            count_tokens_total([body.query], model="voyage-context-3", api_key=api_key)
-            if api_key
-            else 0
-        )
-        q_norm = await self.rewrite.normalize_query(
-            body.query,
-            byok_voyage_key=body.byok_voyage_api_key,
-        )
-        q_tok_after = (
-            count_tokens_total([q_norm], model="voyage-context-3", api_key=api_key)
-            if api_key
-            else 0
-        )
-        logger.info(
-            "rewrite.done",
-            extra={
-                "span": "rewrite",
-                "ms": _ms_since(t),
-                "extra": {
-                    "tokens_before": q_tok_before,
-                    "tokens_after": q_tok_after,
-                    "changed": body.query.strip() != q_norm.strip(),
-                },
-                **base_extra,
-            },
-        )
+        # Use the original query directly instead of rewriting
+        q_norm = body.query
+        logger.debug(f"Using original query: {q_norm}")
 
+        # Trace logging for embedding generation
         t = time.perf_counter()
+        logger.debug(f"Starting embedding generation for query: {q_norm}")
         q_vec = await self.embed.embed_query(
             q_norm, byok_voyage_key=body.byok_voyage_api_key, dim=1024
         )
+        logger.debug(f"Embedding generation completed. Vector dimension: {len(q_vec)}")
         logger.info(
             "embed.done",
             extra={
@@ -97,26 +74,34 @@ class RetrievalService:
         if body.mode == "collapsed":
             # 1) tìm summary/root nodes gần nhất
             t = time.perf_counter()
+            db_t = time.perf_counter()  # Track database query time separately
+            logger.debug("Starting search for summary nodes (collapsed mode)")
             nodes = await repo.search_summary_nodes(
                 dataset_id=body.dataset_id, q_vec=q_vec, limit=body.expand_k
             )
+            db_time = _ms_since(db_t)  # Database query time
             node_ids = [n["node_id"] for n in nodes]
             top_dist = nodes[0]["dist"] if nodes else None
+            logger.debug(f"Found {len(nodes)} summary nodes. Top distance: {top_dist}")
             logger.info(
                 "collapsed.nodes",
                 extra={
                     "span": "collapsed.nodes",
                     "ms": _ms_since(t),
-                    "extra": {"n": len(nodes), "top_dist": top_dist},
+                    "extra": {"n": len(nodes), "top_dist": top_dist, "db_time_ms": db_time},
                     **base_extra,
                 },
             )
             # 2) expand xuống chunks và xếp hạng theo q_vec
             t = time.perf_counter()
+            db_t = time.perf_counter()  # Track database query time separately
+            logger.debug(f"Starting leaf chunk gathering for {len(node_ids)} nodes")
             chunks = await repo.gather_leaf_chunks(
                 dataset_id=body.dataset_id, node_ids=node_ids, q_vec=q_vec, top_k=body.top_k
             )
+            db_time = _ms_since(db_t)  # Database query time
             dists = [c.get("dist") for c in chunks if "dist" in c]
+            logger.debug(f"Gathered {len(chunks)} leaf chunks")
             logger.info(
                 "collapsed.chunks",
                 extra={
@@ -126,32 +111,39 @@ class RetrievalService:
                         "n": len(chunks),
                         "best": (min(dists) if dists else None),
                         "median": (median(dists) if dists else None),
+                        "db_time_ms": db_time,
                     },
                     **base_extra,
                 },
             )
         else:
             t = time.perf_counter()
+            db_t = time.perf_counter()  # Track database query time separately
+            logger.debug("Starting traversal retrieval")
             chunks = await repo.traversal_retrieve(
                 dataset_id=body.dataset_id,
                 q_vec=q_vec,
                 top_k=body.top_k,
                 levels_cap=body.levels_cap,
             )
+            db_time = _ms_since(db_t)  # Database query time
+            logger.debug(f"Traversal retrieval completed. Found {len(chunks)} chunks")
             logger.info(
                 "traversal.chunks",
                 extra={
                     "span": "traversal",
                     "ms": _ms_since(t),
-                    "extra": {"n": len(chunks)},
+                    "extra": {"n": len(chunks), "db_time_ms": db_time},
                     **base_extra,
                 },
             )
 
         if body.use_reranker and self.reranker:
             t = time.perf_counter()
+            logger.debug(f"Starting reranking of {len(chunks)} chunks")
             before = len(chunks)
             chunks = await self.reranker.rerank(chunks, body.reranker_model, q_norm)
+            logger.debug(f"Reranking completed. Chunks before: {before}, after: {len(chunks)}")
             logger.info(
                 "rerank.done",
                 extra={

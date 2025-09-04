@@ -148,7 +148,8 @@ export const ChatPageTemplate = ({ className }: ChatPageTemplateProps) => {
       return
     }
 
-    setIsSendingMessage(true)
+    // Note: We no longer set isSendingMessage here since the user message is shown immediately
+    // and the send button is re-enabled for the next message
     
     try {
       // Send message to assistant using the new API
@@ -175,15 +176,7 @@ export const ChatPageTemplate = ({ className }: ChatPageTemplateProps) => {
       }
     } catch (error) {
       console.error('Failed to send message:', error)
-      // Add error message to UI
-      addMessage({
-        type: 'assistant',
-        content: 'Sorry, I encountered an error processing your request. Please try again.',
-        timestamp: new Date(),
-        sessionId: selectedSession.id
-      })
-    } finally {
-      setIsSendingMessage(false)
+      // Error message is now handled in the hook, so we don't need to add it here
     }
   }
   

@@ -1,12 +1,18 @@
-import { Card, CardBody, Input, Button, Avatar, Popover, PopoverTrigger, PopoverContent } from '@heroui/react'
+import { Card, CardBody, Button, Popover, PopoverTrigger, PopoverContent } from '@heroui/react'
 import { Heading, Text, Flex } from '@radix-ui/themes'
 import { PaperPlaneIcon, ChatBubbleIcon, ClipboardIcon } from '@radix-ui/react-icons'
 import { useState, useRef, useEffect } from 'react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import { AnimatePresence } from 'framer-motion'
 import { FileUpload } from '../../molecules'
+import { ChatMessage } from '../../molecules/ChatMessage'
+import { useTextareaAutoResize } from '../../../hooks/useTextareaAutoResize'
 import type { FileUploadItem } from '../../molecules'
 import type { Message, ChatSession } from '../../../hooks/useChatState'
+
+// Type for messages that can be displayed in the chat (excluding system messages)
+type DisplayableMessage = Omit<Message, 'type'> & {
+  type: 'user' | 'assistant'
+}
 
 interface ChatAreaProps {
   className?: string
@@ -21,6 +27,7 @@ export const ChatArea = ({ className, selectedSession, messages, onSendMessage, 
   const [selectedFiles, setSelectedFiles] = useState<FileUploadItem[]>([])
   const [isFileUploadOpen, setIsFileUploadOpen] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useTextareaAutoResize(inputValue)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -37,7 +44,7 @@ export const ChatArea = ({ className, selectedSession, messages, onSendMessage, 
     // Send message with files if any
     onSendMessage(inputValue.trim(), selectedFiles.length > 0 ? selectedFiles : undefined)
 
-    // Clear input and files
+    // Clear input and files immediately since user message is shown right away
     setInputValue('')
     setSelectedFiles([])
     setIsFileUploadOpen(false)
@@ -106,117 +113,13 @@ export const ChatArea = ({ className, selectedSession, messages, onSendMessage, 
               </div>
             ) : (
               <div className="space-y-4">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex gap-3 ${
-                      message.type === 'user' ? 'justify-end' : 'justify-start'
-                    }`}
-                  >
-                    {message.type === 'assistant' && (
-                      <Avatar
-                        size="sm"
-                        className="bg-indigo-600 text-white flex-shrink-0"
-                        fallback="AI"
-                      />
-                    )}
-
-                    <div
-                      className={`max-w-[80%] p-4 rounded-lg ${
-                        message.type === 'user'
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-gray-100 text-gray-900'
-                      }`}
-                    >
-                      <div 
-                        className={`text-sm ${
-                          message.type === 'user' ? 'text-white' : 'text-gray-900'
-                        } prose prose-sm max-w-none`}
-                      >
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          components={{
-                            p: ({ ...props }) => <p className="mb-3 last:mb-0" {...props} />,
-                            ul: ({ ...props }) => <ul className="list-disc list-inside mb-3" {...props} />,
-                            ol: ({ ...props }) => <ol className="list-decimal list-inside mb-3" {...props} />,
-                            li: ({ ...props }) => <li className="mb-1" {...props} />,
-                            a: ({ ...props }) => <a className="text-blue-500 hover:underline" target="_blank" rel="noopener noreferrer" {...props} />,
-                            code: ({ ...props }) => 
-                              <code 
-                                className="bg-gray-200 dark:bg-gray-700 rounded px-1 py-0.5 text-sm font-mono" 
-                                {...props} 
-                              />,
-                            pre: ({ ...props }) => 
-                              <pre 
-                                className="bg-gray-100 dark:bg-gray-800 rounded p-3 overflow-x-auto text-sm" 
-                                {...props} 
-                              />,
-                            blockquote: ({ ...props }) => 
-                              <blockquote 
-                                className="border-l-4 border-gray-300 pl-4 italic text-gray-600" 
-                                {...props} 
-                              />,
-                            h1: ({ ...props }) => <h1 className="text-2xl font-bold mt-4 mb-2" {...props} />,
-                            h2: ({ ...props }) => <h2 className="text-xl font-bold mt-3 mb-2" {...props} />,
-                            h3: ({ ...props }) => <h3 className="text-lg font-bold mt-2 mb-1" {...props} />,
-                            h4: ({ ...props }) => <h4 className="text-base font-bold mt-2 mb-1" {...props} />,
-                            h5: ({ ...props }) => <h5 className="text-sm font-bold mt-1 mb-1" {...props} />,
-                            h6: ({ ...props }) => <h6 className="text-xs font-bold mt-1 mb-1" {...props} />,
-                            table: ({ ...props }) => <table className="min-w-full border-collapse border border-gray-300 my-2" {...props} />,
-                            th: ({ ...props }) => <th className="border border-gray-300 px-3 py-1 bg-gray-100 font-bold" {...props} />,
-                            td: ({ ...props }) => <td className="border border-gray-300 px-3 py-1" {...props} />,
-                            tr: ({ ...props }) => <tr {...props} />
-                          }}
-                        >
-                          {message.content}
-                        </ReactMarkdown>
-                      </div>
-                      {message.contextPassages && message.contextPassages.length > 0 && (
-                        <div className="mt-2 pt-2 border-t border-gray-200">
-                          <Text className="text-xs text-gray-500">Context passages:</Text>
-                          <ul className="mt-1 space-y-1">
-                            {message.contextPassages.slice(0, 3).map((passage, index) => (
-                              <li key={index} className="text-xs text-gray-600 truncate">
-                                • {passage.content && typeof passage.content === 'string' ? passage.content.substring(0, 100) : '...'}...
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      <Text className={`text-xs mt-2 ${
-                        message.type === 'user' ? 'text-indigo-200' : 'text-gray-500'
-                      }`}>
-                        {message.timestamp.toLocaleTimeString()}
-                      </Text>
-                    </div>
-
-                    {message.type === 'user' && (
-                      <Avatar
-                        size="sm"
-                        className="bg-gray-600 text-white flex-shrink-0"
-                        fallback="U"
-                      />
-                    )}
-                  </div>
-                ))}
-
-                {/* Loading Indicator */}
-                {isSendingMessage && (
-                  <div className="flex gap-3 justify-start">
-                    <Avatar
-                      size="sm"
-                      className="bg-indigo-600 text-white flex-shrink-0"
-                      fallback="AI"
-                    />
-                    <div className="bg-gray-100 text-gray-900 p-4 rounded-lg">
-                      <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <AnimatePresence>
+                  {messages
+                    .filter(message => message.type !== 'system')
+                    .map((message) => (
+                      <ChatMessage key={message.id} message={message as DisplayableMessage} />
+                    ))}
+                </AnimatePresence>
 
                 <div ref={messagesEndRef} />
               </div>
@@ -239,15 +142,15 @@ export const ChatArea = ({ className, selectedSession, messages, onSendMessage, 
 
             <Flex gap="2" align="end">
               <div className="flex-1">
-                <Input
+                <textarea
+                  ref={textareaRef}
                   placeholder={selectedSession ? "Ask me anything about your knowledge bases..." : "Select a session to start chatting"}
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  variant="bordered"
-                  size="lg"
-                  className="w-full"
+                  className="w-full p-3 border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   disabled={isSendingMessage || !selectedSession}
+                  rows={1}
                 />
               </div>
 
@@ -283,9 +186,8 @@ export const ChatArea = ({ className, selectedSession, messages, onSendMessage, 
                 variant="solid"
                 size="lg"
                 onClick={handleSendMessage}
-                isDisabled={(!inputValue.trim() && selectedFiles.length === 0) || isSendingMessage || !selectedSession}
+                isDisabled={(!inputValue.trim() && selectedFiles.length === 0) || !selectedSession}
                 isIconOnly
-                isLoading={isSendingMessage}
               >
                 <PaperPlaneIcon className="w-4 h-4" />
               </Button>

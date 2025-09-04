@@ -1,3 +1,4 @@
+import logging
 import time
 
 from fastapi import APIRouter, Request
@@ -18,6 +19,8 @@ from services import (
     VoyageEmbeddingClientAsync,
 )
 
+logger = logging.getLogger("raptor.retrieve.routes")
+
 router = APIRouter()
 
 
@@ -32,12 +35,15 @@ async def send_chat_message(body: ChatMessageRequest, request: Request):
     Returns:
         AI response with context
     """
+    logger.info(f"Received chat message request: {body.query}")
+    start_time = time.time()
+    
     # Initialize services
+    logger.debug("Initializing services")
     _fpt = FPTLLMClient(model="DeepSeek-V3")
     _voy = VoyageEmbeddingClientAsync(model="voyage-context-3", out_dim=1024)
-    _rewrite = QueryRewriteService(fpt_client=_fpt)
     _embed = EmbeddingQueryService(voyage_client_async=_voy)
-    _service = RetrievalService(rewrite_svc=_rewrite, embed_svc=_embed)
+    _service = RetrievalService(embed_svc=_embed)
     _gemini = GeminiChatLLM(model="gemini-2.5-flash")
     _openai = OpenAIClientAsync(model="gpt-4o-mini")
 
@@ -52,7 +58,12 @@ async def send_chat_message(body: ChatMessageRequest, request: Request):
     chat_service = ChatService()
 
     controller = ChatMessageController(request, chat_service, answer_service)
-    return await controller.send_chat_message(body)
+    result = await controller.send_chat_message(body)
+    
+    processing_time = int((time.time() - start_time) * 1000)
+    logger.info(f"Chat message request completed in {processing_time}ms")
+    
+    return result
 
 
 @router.post("/chat/enhanced", summary="Send chat message with enhanced context")
@@ -66,12 +77,15 @@ async def send_enhanced_chat_message(body: EnhancedChatMessageRequest, request: 
     Returns:
         AI response with enhanced context
     """
+    logger.info(f"Received enhanced chat message request: {body.query}")
+    start_time = time.time()
+    
     # Initialize services
+    logger.debug("Initializing services")
     _fpt = FPTLLMClient(model="DeepSeek-V3")
     _voy = VoyageEmbeddingClientAsync(model="voyage-context-3", out_dim=1024)
-    _rewrite = QueryRewriteService(fpt_client=_fpt)
     _embed = EmbeddingQueryService(voyage_client_async=_voy)
-    _service = RetrievalService(rewrite_svc=_rewrite, embed_svc=_embed)
+    _service = RetrievalService(embed_svc=_embed)
     _gemini = GeminiChatLLM(model="gemini-2.5-flash")
     _openai = OpenAIClientAsync(model="gpt-4o-mini")
 
@@ -86,4 +100,9 @@ async def send_enhanced_chat_message(body: EnhancedChatMessageRequest, request: 
     chat_service = ChatService()
 
     controller = ChatMessageController(request, chat_service, answer_service)
-    return await controller.send_enhanced_chat_message(body)
+    result = await controller.send_enhanced_chat_message(body)
+    
+    processing_time = int((time.time() - start_time) * 1000)
+    logger.info(f"Enhanced chat message request completed in {processing_time}ms")
+    
+    return result
