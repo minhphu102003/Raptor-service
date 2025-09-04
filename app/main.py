@@ -64,8 +64,8 @@ if VECTOR_DSN and not VECTOR_DSN.startswith("postgresql+psycopg://"):
 async def lifespan(app: FastAPI):
     app.state.container = Container(orm_async_dsn=ASYNC_DSN, vector_dsn=VECTOR_DSN)
 
-    # Check if MCP is explicitly enabled via command line
-    mcp_enabled = getattr(app.state, "mcp_enabled", settings.mcp_enabled)
+    # Check if MCP is explicitly enabled via command line or environment
+    mcp_enabled = getattr(app.state, "mcp_enabled", settings.mcp.enabled)
 
     # Initialize MCP server if available and enabled
     if mcp_enabled and MCP_AVAILABLE and MCP_EXTERNAL:
@@ -131,6 +131,7 @@ app.add_middleware(
         "http://127.0.0.1:5173",
         "http://localhost:4173",
         "http://127.0.0.1:4173",
+        "http://172.18.0.1:45094",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -140,7 +141,7 @@ app.add_middleware(
 app.include_router(root_router, prefix=settings.api_prefix)
 
 # Add MCP routes if available and enabled
-mcp_enabled = getattr(app.state, "mcp_enabled", settings.mcp_enabled)
+mcp_enabled = getattr(app.state, "mcp_enabled", settings.mcp.enabled)
 
 if mcp_enabled and MCP_AVAILABLE:
     try:

@@ -29,7 +29,7 @@
 
 ### 1.1 Sơ đồ dòng dữ liệu (upload → build)
 
-```mermaid
+``mermaid
 flowchart TD
 %% Gate: only .md
 A["Client Upload<br/>(.md or other)"] --> B{"Is Markdown (.md)?"}
@@ -95,7 +95,7 @@ CHK -- "No → done" --> OUT["Finish build<br/>(persist final tree & index)"]
 
 ### 1.2 Sơ đồ dòng truy vấn
 
-```mermaid
+``mermaid
 flowchart TD
   A["POST /v1/retrieve (dataset_id, query, mode, top_k, expand_k, levels_cap, use_reranker, byok_key)"] --> N["Normalize + sanitize query"]
   N --> E["Embed query (Voyage context-3, dim=1024)"]
@@ -128,7 +128,7 @@ flowchart TD
 
 ### 1.3 Sơ đồ trình tự (Async build)
 
-```mermaid
+``mermaid
 sequenceDiagram
 autonumber
 participant C as Client
@@ -413,7 +413,7 @@ curl -X POST "$HOST/v1/document/ingest-markdown"   -H "X-Dataset-Id: ds_demo"   
 
 ## Response (200 OK)
 
-```json
+```
 {
   "answer": "Để cài đặt hệ thống, bạn cần thực hiện các bước sau...",
   "model": "DeepSeek-V3",
@@ -536,7 +536,7 @@ curl -X POST "$HOST/v1/document/ingest-markdown"   -H "X-Dataset-Id: ds_demo"   
 
 ## Response (200 OK)
 
-```json
+```
 {
   "code": 201,
   "data": {
@@ -604,7 +604,7 @@ curl -X POST "$HOST/v1/document/ingest-markdown"   -H "X-Dataset-Id: ds_demo"   
 
 ## Response (200 OK)
 
-```json
+```
 {
   "code": 200,
   "data": {
@@ -735,6 +735,87 @@ Bạn có thể tải xuống file Postman Collection để test các API: [post
 
 ---
 
+## 4) 🐳 Docker Setup
+
+### Prerequisites
+- Docker Engine 20.10+
+- Docker Compose 1.29+
+
+### Development Environment
+
+To run the application in development mode:
+
+```bash
+# Copy the example environment file
+cp .env.example .env
+
+# Edit the .env file with your configuration
+# Make sure to set your database connection strings
+
+# Start the services
+docker-compose up --build
+
+# The application will be available at:
+# - Frontend: http://localhost
+# - Backend API: http://localhost:8000
+```
+
+### Production Environment
+
+For production deployment:
+
+```bash
+# Copy the example environment file
+cp .env.example .env
+
+# Edit the .env file with your production configuration
+
+# Start the services in production mode
+docker-compose -f docker-compose.prod.yml up --build -d
+
+# The application will be available at:
+# - Frontend: http://localhost
+# - Backend API: http://localhost/api
+```
+
+### Docker Images
+
+The project uses multi-stage Docker builds for both frontend and backend:
+
+1. **Frontend**:
+   - Build stage: Node.js with pnpm to build the React application
+   - Production stage: Nginx to serve the static files
+
+2. **Backend**:
+   - Base stage: Python 3.11 with uv for dependency management
+   - Dev stage: FastAPI development server with hot reload
+   - Prod stage: Optimized FastAPI production server
+
+### Configuration
+
+Environment variables can be set in the `.env` file. See `.env.example` for available options.
+
+### Volumes
+
+The development setup includes volume mounts for hot reloading:
+- Backend: Source code is mounted for live updates
+- Frontend: Source code is mounted for live updates
+
+## 🧪 Testing
+
+To run tests in Docker:
+
+```bash
+# Run backend tests
+docker-compose run api pytest
+
+# Or build and run the test stage
+docker build --target test -t raptor-test .
+docker run raptor-test
+```
+
+---
+
 ## 5) Stages chi tiết của Build
 
 ### Stage 0 – Upload gate & Persist Document
@@ -788,8 +869,7 @@ Vòng lặp theo tầng chạy đến khi đạt điều kiện dừng:
 
 ## 6) Mô hình dữ liệu
 
-```mermaid
-classDiagram
+```
 class Document {
 +doc_id: string
 +dataset_id: string
@@ -963,7 +1043,7 @@ The RAPTOR service supports integration with remote LLM services through the Mod
 
 ### Architecture
 
-```mermaid
+```
 flowchart TD
     A[AI Assistant] --> B[MCP Client]
     B --> C[RAPTOR MCP Server]
@@ -1000,7 +1080,7 @@ The MCP server is accessible through a Server-Sent Events (SSE) endpoint at `/mc
 
 ### Example Client Usage
 
-```language: python
+```
 import asyncio
 from services.mcp.client_example import RaptorMCPClient
 
@@ -1026,7 +1106,7 @@ async def example_usage():
 
 To enable MCP, ensure the required dependencies are installed:
 
-```bash
+```
 pip install mcp[cli]
 ```
 
