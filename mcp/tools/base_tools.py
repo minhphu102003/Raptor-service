@@ -10,15 +10,25 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger("raptor.mcp.tools.base")
 
 
-async def list_datasets() -> Dict[str, Any]:
+async def list_datasets(container=None) -> Dict[str, Any]:
     """
     List all available datasets.
+
+    Args:
+        container: The application container with database sessions
 
     Returns:
         Dictionary with list of datasets
     """
     try:
         logger.info("Listing available datasets")
+
+        # Use container to access database if available
+        if container is not None:
+            # Example of how to use container:
+            # db_session = container.get_database_session()
+            # datasets = db_session.query(Dataset).all()
+            pass
 
         # Simulate dataset listing
         await asyncio.sleep(0.05)  # Simulate processing time
@@ -52,19 +62,31 @@ async def list_datasets() -> Dict[str, Any]:
         }
 
 
-async def create_chat_session(dataset_id: str, title: str = "New Chat Session") -> Dict[str, Any]:
+async def create_chat_session(
+    dataset_id: str, title: str = "New Chat Session", container=None
+) -> Dict[str, Any]:
     """
     Create a new chat session.
 
     Args:
         dataset_id: ID of the dataset to chat with
         title: Title for the chat session
+        container: The application container with database sessions
 
     Returns:
         Dictionary with session information
     """
     try:
         logger.info(f"Creating chat session for dataset {dataset_id}")
+
+        # Use container to access database if available
+        if container is not None:
+            # Example of how to use container:
+            # db_session = container.get_database_session()
+            # session = ChatSession(dataset_id=dataset_id, title=title)
+            # db_session.add(session)
+            # db_session.commit()
+            pass
 
         # Simulate session creation
         await asyncio.sleep(0.05)  # Simulate processing time
@@ -93,6 +115,7 @@ async def ingest_document(
     file_content: str,
     source: Optional[str] = None,
     tags: Optional[List[str]] = None,
+    container=None,
 ) -> Dict[str, Any]:
     """
     Ingest a document into the RAPTOR service.
@@ -102,6 +125,7 @@ async def ingest_document(
         file_content: Content of the document to ingest
         source: Source of the document (optional)
         tags: Tags to associate with the document (optional)
+        container: The application container with database sessions
 
     Returns:
         Dictionary with ingestion result
@@ -109,7 +133,38 @@ async def ingest_document(
     try:
         logger.info(f"Ingesting document into dataset {dataset_id}")
 
-        # Simulate document ingestion
+        # Use container to access database if available
+        if container is not None:
+            # Use the DocumentService to ingest the document
+            document_service = container.make_document_service()
+
+            # Convert file_content to bytes
+            file_bytes = file_content.encode("utf-8")
+
+            # Create a payload object to match the DocumentService interface
+            class Payload:
+                def __init__(self, source, tags):
+                    self.source = source
+                    self.tags = tags
+                    self.extra_meta = None
+                    self.upsert_mode = "upsert"
+
+            pl = Payload(source, tags)
+
+            # Ingest the document
+            result = await document_service.ingest_markdown(file_bytes, pl, dataset_id)
+
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"Successfully ingested document into dataset {dataset_id}. Document ID: {result['data']['doc_id']}, Chunks: {result['data']['chunks']}",
+                    }
+                ],
+                "isError": False,
+            }
+
+        # Simulate document ingestion for backward compatibility
         await asyncio.sleep(0.1)  # Simulate processing time
 
         return {

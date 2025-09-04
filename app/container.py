@@ -3,6 +3,9 @@ from db.session import build_session_factory
 from interfaces_adaptor.gateways.file_source import FileSourceHybrid
 from mcp.raptor_mcp_server import RaptorMCPService
 from repositories.document_repo_pg import DocumentRepoPg
+from repositories.retrieval_repo import RetrievalRepo
+from repositories.tree_repo_pg import TreeRepoPg
+from services.document.document_service import DocumentService
 from services.providers.langchain.langchain_chunker import LangChainChunker
 from uow.sqlalchemy_uow import SqlAlchemyUnitOfWork
 
@@ -25,6 +28,15 @@ class Container:
 
     def make_doc_repo(self, uow: SqlAlchemyUnitOfWork) -> DocumentRepoPg:
         return DocumentRepoPg(uow)
+
+    def make_retrieval_repo(self, uow: SqlAlchemyUnitOfWork) -> RetrievalRepo:
+        return RetrievalRepo(uow)
+
+    def make_tree_repo(self, uow: SqlAlchemyUnitOfWork) -> TreeRepoPg:
+        return TreeRepoPg(uow.session)
+
+    def make_document_service(self) -> DocumentService:
+        return DocumentService(self)
 
     def get_mcp_service(self):
         """Get the MCP service instance"""

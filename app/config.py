@@ -37,6 +37,12 @@ settings = Settings()
 # This allows for runtime configuration
 for key, value in os.environ.items():
     if key.startswith("APP_"):
-        setattr(settings, key[4:].lower(), value)
+        field_name = key[4:].lower()
+        # Only set attributes that exist in the Settings class
+        if hasattr(settings, field_name):
+            setattr(settings, field_name, value)
     elif key.startswith("VECTOR_"):
-        setattr(settings.vector, key[7:].lower(), value)
+        field_name = key[7:].lower()
+        # Only set attributes that exist in the VectorSettings class
+        if hasattr(settings.vector, field_name):
+            setattr(settings.vector, field_name, value)
