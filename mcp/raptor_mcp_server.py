@@ -11,25 +11,12 @@ from .tools.base_tools import ingest_document as _ingest_document
 # We'll import the functions but modify how they're called
 from .tools.base_tools import list_datasets as _list_datasets
 from .tools.document_tools import answer_question as _answer_question
-from .tools.document_tools import retrieve_documents as _retrieve_documents
-from .tools.rag_tools import (
-    rag_node_children as _rag_node_children,
-)
-from .tools.rag_tools import (
-    rag_node_get as _rag_node_get,
-)
-from .tools.rag_tools import (
-    rag_node_navigation as _rag_node_navigation,
-)
-from .tools.rag_tools import (
-    rag_path_to_root as _rag_path_to_root,
-)
-from .tools.rag_tools import (
-    rag_retrieve as _rag_retrieve,
-)
-from .tools.rag_tools import (
-    rag_summarize as _rag_summarize,
-)
+from .tools.rag_navigation import rag_path_to_root as _rag_path_to_root
+from .tools.rag_node import rag_node_children as _rag_node_children
+from .tools.rag_node import rag_node_get as _rag_node_get
+from .tools.rag_node import rag_node_navigation as _rag_node_navigation
+from .tools.rag_retrieve import rag_retrieve as _rag_retrieve
+from .tools.rag_summarize import rag_summarize as _rag_summarize
 from .tools.resources import read_resource as _read_resource
 
 # Import for runtime, but avoid type conflicts
@@ -160,13 +147,6 @@ class RaptorMCPService:
                 dataset_id, file_content, source, tags, container=container
             )
 
-        # Document retrieval tool (existing)
-        @self.mcp.tool()
-        async def retrieve_documents_tool(
-            dataset_id: str, query: str, mode: str = "collapsed", top_k: int = 5, expand_k: int = 3
-        ) -> Dict[str, Any]:
-            return await _retrieve_documents(dataset_id, query, mode, top_k, expand_k)
-
         # Question answering tool (existing)
         @self.mcp.tool()
         async def answer_question_tool(
@@ -176,7 +156,9 @@ class RaptorMCPService:
             top_k: int = 5,
             temperature: float = 0.7,
         ) -> Dict[str, Any]:
-            return await _answer_question(dataset_id, query, mode, top_k, temperature)
+            return await _answer_question(
+                dataset_id, query, mode, top_k, temperature, container=container
+            )
 
         # Dataset management tool (existing)
         @self.mcp.tool()
@@ -205,7 +187,7 @@ class RaptorMCPService:
         async def read_resource_tool(dataset_id: str, node_id: str) -> Dict[str, Any]:
             # Construct the URI from the parameters
             uri = f"raptor://{dataset_id}/nodes/{node_id}"
-            return await _read_resource(uri)
+            return await _read_resource(uri, container=container)
 
     def get_mcp_server(self):
         """Get the MCP server instance"""

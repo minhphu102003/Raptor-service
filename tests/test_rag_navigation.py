@@ -3,7 +3,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-# Updated import to use the new separate module
 from mcp.tools.rag_navigation import rag_path_to_root
 
 
@@ -21,9 +20,24 @@ async def test_rag_path_to_root_with_container():
 
     # Configure mock repo to return specific data
     mock_path_data = [
-        {"node_id": "node_123", "level": 2, "kind": "summary", "text": "Current node text"},
-        {"node_id": "parent_123", "level": 1, "kind": "summary", "text": "Parent node text"},
-        {"node_id": "root_123", "level": 0, "kind": "root", "text": "Root node text"},
+        {
+            "node_id": "node_123",
+            "level": 2,
+            "kind": "summary",
+            "text": "Current node text",
+        },
+        {
+            "node_id": "parent_123",
+            "level": 1,
+            "kind": "summary",
+            "text": "Parent node text",
+        },
+        {
+            "node_id": "root_123",
+            "level": 0,
+            "kind": "root",
+            "text": "Root node text",
+        },
     ]
     mock_repo.get_path_to_root.return_value = mock_path_data
 
@@ -36,7 +50,9 @@ async def test_rag_path_to_root_with_container():
 
     # Verify the result
     assert not result["isError"]
-    assert "Path to root" in str(result["content"][0]["text"])
+    assert "content" in result
+    assert len(result["content"]) > 0
+    assert "Path to root" in result["content"][0]["text"]
 
     # Verify the mock was called correctly
     mock_container.make_uow.assert_called_once()
@@ -52,4 +68,6 @@ async def test_rag_path_to_root_without_container():
 
     # Verify the result (should use simulated data)
     assert not result["isError"]
-    assert "Path to root" in str(result["content"][0]["text"])
+    assert "content" in result
+    assert len(result["content"]) > 0
+    assert "Path to root" in result["content"][0]["text"]
