@@ -1,12 +1,9 @@
-"""
-Unit tests for the RAG tools
-"""
-
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from mcp.tools.rag_tools import rag_node_children, rag_node_get
+# Updated imports to use the new separate modules
+from mcp.tools.rag_node import rag_node_children, rag_node_get
 
 
 class TestRAGTools:

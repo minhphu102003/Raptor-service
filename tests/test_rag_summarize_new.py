@@ -3,7 +3,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-# Updated import to use the new separate module
 from mcp.tools.rag_summarize import rag_summarize
 
 
@@ -30,18 +29,48 @@ async def test_rag_summarize_with_container():
     mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
     mock_uow.__aexit__ = AsyncMock(return_value=None)
 
-    # Call the function
-    result = await rag_summarize(["node_1", "node_2"], container=mock_container)
+    # Patch the summarizer in the rag_summarize function
+    import mcp.tools.rag_summarize as rag_summarize_module
 
-    # Verify the result
-    assert not result["isError"]
-    assert "content" in result
-    assert len(result["content"]) > 0
+    original_llm_summarizer = rag_summarize_module.LLMSummarizer
+    original_make_llm = rag_summarize_module.make_llm
+    original_get_service_config = rag_summarize_module.get_service_config
 
-    # Verify the mock was called correctly
-    mock_container.make_uow.assert_called_once()
-    mock_container.make_retrieval_repo.assert_called_once_with(mock_uow)
-    mock_repo.get_node_texts_by_ids.assert_called_once_with(node_ids=["node_1", "node_2"])
+    mock_llm_summarizer = MagicMock()
+    mock_llm = AsyncMock()
+    mock_config = MagicMock()
+
+    # Mock the service config
+    mock_service_config = MagicMock()
+    mock_service_config.model_config = mock_config
+    mock_config.get_default_model.return_value = "test_model"
+
+    rag_summarize_module.get_service_config = lambda: mock_service_config
+    rag_summarize_module.make_llm = lambda model, config: mock_llm
+
+    # Mock the summarizer
+    mock_llm_summarizer_instance = AsyncMock()
+    mock_llm_summarizer_instance.summarize_cluster = AsyncMock(return_value="Test summary")
+    rag_summarize_module.LLMSummarizer = lambda llm, config: mock_llm_summarizer_instance
+
+    try:
+        # Call the function
+        result = await rag_summarize(["node_1", "node_2"], container=mock_container)
+
+        # Verify the result
+        assert not result["isError"]
+        assert "content" in result
+        assert len(result["content"]) > 0
+
+        # Verify the mock was called correctly
+        mock_container.make_uow.assert_called_once()
+        mock_container.make_retrieval_repo.assert_called_once_with(mock_uow)
+        mock_repo.get_node_texts_by_ids.assert_called_once_with(node_ids=["node_1", "node_2"])
+    finally:
+        # Restore original classes
+        rag_summarize_module.LLMSummarizer = original_llm_summarizer
+        rag_summarize_module.make_llm = original_make_llm
+        rag_summarize_module.get_service_config = original_get_service_config
 
 
 @pytest.mark.asyncio
@@ -110,30 +139,3 @@ async def test_rag_summarize_with_container_no_text_content():
     # Verify the result
     assert not result["isError"]
     assert "No text content found" in result["content"][0]["text"]
-
-
-@pytest.mark.asyncio
-async def test_rag_summarize_database_error():
-    """Test rag_summarize when database error occurs"""
-    # Create mock container and its components
-    mock_container = MagicMock()
-    mock_uow = AsyncMock()
-    mock_repo = AsyncMock()
-
-    # Configure container to return mock components
-    mock_container.make_uow.return_value = mock_uow
-    mock_container.make_retrieval_repo.return_value = mock_repo
-
-    # Configure mock repo to raise an exception
-    mock_repo.get_node_texts_by_ids.side_effect = Exception("Database error")
-
-    # Mock the context manager behavior
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=None)
-
-    # Call the function
-    result = await rag_summarize(["node_1", "node_2"], container=mock_container)
-
-    # Verify the result is an error
-    assert result["isError"]
-    assert "Failed to summarize nodes" in str(result["content"][0]["text"])

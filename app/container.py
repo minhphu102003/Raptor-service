@@ -2,6 +2,7 @@ from app.config import settings
 from db.session import build_session_factory
 from interfaces_adaptor.gateways.file_source import FileSourceHybrid
 from mcp.raptor_mcp_server import RaptorMCPService
+from repositories.dataset_repo_pg import DatasetRepoPg
 from repositories.document_repo_pg import DocumentRepoPg
 from repositories.retrieval_repo import RetrievalRepo
 from repositories.tree_repo_pg import TreeRepoPg
@@ -34,6 +35,9 @@ class Container:
 
     def make_tree_repo(self, uow: SqlAlchemyUnitOfWork) -> TreeRepoPg:
         return TreeRepoPg(uow.session)
+
+    def make_dataset_repo(self, uow: SqlAlchemyUnitOfWork) -> DatasetRepoPg:
+        return DatasetRepoPg(uow.session)
 
     def make_document_service(self) -> DocumentService:
         return DocumentService(self)
