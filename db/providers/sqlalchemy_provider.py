@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.pool import NullPool
+from sqlalchemy.pool import AsyncAdaptedQueuePool  # Changed from NullPool
 
 from .base import DatabaseConfig, IDatabaseProvider, ISessionProvider
 from .factory import register_provider
@@ -84,11 +84,15 @@ class PostgreSQLProvider(IDatabaseProvider):
                 connect_args["prepare_threshold"] = None
             connect_args.update(self.config.options.get("connect_args", {}))
 
-        # Create engine
+        # Create engine with proper connection pooling
         self._engine = create_async_engine(
             self.config.dsn,
             pool_pre_ping=True,
-            poolclass=NullPool,
+            poolclass=AsyncAdaptedQueuePool,  # Use connection pooling
+            pool_size=20,  # Number of connections to maintain in the pool
+            max_overflow=30,  # Additional connections that can be created when needed
+            pool_timeout=30,  # Seconds to wait before giving up on getting a connection
+            pool_recycle=3600,  # Recycle connections after 1 hour
             connect_args=connect_args,
         )
 

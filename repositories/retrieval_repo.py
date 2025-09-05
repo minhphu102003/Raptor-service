@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import ARRAY
 
 logger = logging.getLogger("raptor.retrieve.db")
 
+
 class RetrievalRepo:
     def __init__(self, uow):
         self.session = uow.session
@@ -26,7 +27,7 @@ class RetrievalRepo:
         """
         logger.debug(f"Retrieving metadata for node: {node_id}")
         start_time = time.perf_counter()
-        
+
         sql = text("""
             SELECT
                 tn.node_id,
@@ -44,10 +45,10 @@ class RetrievalRepo:
         """)
         res = await self.session.execute(sql, {"node_id": node_id})
         row = res.mappings().first()
-        
+
         duration = time.perf_counter() - start_time
-        logger.debug(f"Node metadata retrieval completed in {duration*1000:.2f}ms")
-        
+        logger.debug(f"Node metadata retrieval completed in {duration * 1000:.2f}ms")
+
         return dict(row) if row else None
 
     async def get_node_children(
@@ -60,7 +61,7 @@ class RetrievalRepo:
         """
         logger.debug(f"Retrieving children for node: {node_id}")
         start_time = time.perf_counter()
-        
+
         sql = text("""
             SELECT
                 tn.node_id,
@@ -77,10 +78,10 @@ class RetrievalRepo:
         res = await self.session.execute(sql, {"node_id": node_id})
         rows = res.mappings().all()
         children = [dict(r) for r in rows]
-        
+
         duration = time.perf_counter() - start_time
-        logger.debug(f"Retrieved {len(children)} children in {duration*1000:.2f}ms")
-        
+        logger.debug(f"Retrieved {len(children)} children in {duration * 1000:.2f}ms")
+
         return children
 
     async def get_node_parent(
@@ -93,7 +94,7 @@ class RetrievalRepo:
         """
         logger.debug(f"Retrieving parent for node: {node_id}")
         start_time = time.perf_counter()
-        
+
         sql = text("""
             SELECT
                 tn.node_id,
@@ -108,10 +109,10 @@ class RetrievalRepo:
         """)
         res = await self.session.execute(sql, {"node_id": node_id})
         row = res.mappings().first()
-        
+
         duration = time.perf_counter() - start_time
-        logger.debug(f"Parent retrieval completed in {duration*1000:.2f}ms")
-        
+        logger.debug(f"Parent retrieval completed in {duration * 1000:.2f}ms")
+
         return dict(row) if row else None
 
     async def get_node_siblings(
@@ -124,7 +125,7 @@ class RetrievalRepo:
         """
         logger.debug(f"Retrieving siblings for node: {node_id}")
         start_time = time.perf_counter()
-        
+
         sql = text("""
             SELECT
                 tn.node_id,
@@ -146,10 +147,10 @@ class RetrievalRepo:
         res = await self.session.execute(sql, {"node_id": node_id})
         rows = res.mappings().all()
         siblings = [dict(r) for r in rows]
-        
+
         duration = time.perf_counter() - start_time
-        logger.debug(f"Retrieved {len(siblings)} siblings in {duration*1000:.2f}ms")
-        
+        logger.debug(f"Retrieved {len(siblings)} siblings in {duration * 1000:.2f}ms")
+
         return siblings
 
     async def get_path_to_root(
@@ -165,7 +166,7 @@ class RetrievalRepo:
         """
         logger.debug(f"Retrieving path to root for node: {node_id}")
         start_time = time.perf_counter()
-        
+
         sql = text("""
             WITH RECURSIVE path_to_root AS (
                 -- Base case: start with the given node
@@ -206,10 +207,12 @@ class RetrievalRepo:
         res = await self.session.execute(sql, {"node_id": node_id})
         rows = res.mappings().all()
         path = [dict(r) for r in rows]
-        
+
         duration = time.perf_counter() - start_time
-        logger.debug(f"Path to root retrieval completed with {len(path)} nodes in {duration*1000:.2f}ms")
-        
+        logger.debug(
+            f"Path to root retrieval completed with {len(path)} nodes in {duration * 1000:.2f}ms"
+        )
+
         return path
 
     async def get_node_texts_by_ids(
@@ -228,7 +231,7 @@ class RetrievalRepo:
         """
         if not node_ids:
             return []
-            
+
         logger.debug(f"Retrieving texts for {len(node_ids)} nodes")
         start_time = time.perf_counter()
 
@@ -242,10 +245,10 @@ class RetrievalRepo:
         res = await self.session.execute(sql, {"node_ids": node_ids})
         rows = res.mappings().all()
         texts = [dict(r) for r in rows]
-        
+
         duration = time.perf_counter() - start_time
-        logger.debug(f"Retrieved {len(texts)} node texts in {duration*1000:.2f}ms")
-        
+        logger.debug(f"Retrieved {len(texts)} node texts in {duration * 1000:.2f}ms")
+
         return texts
 
     async def search_summary_nodes(
@@ -260,7 +263,7 @@ class RetrievalRepo:
         """
         logger.debug(f"Searching summary nodes for dataset {dataset_id} with limit {limit}")
         start_time = time.perf_counter()
-        
+
         sql = text("""
             WITH q AS (SELECT CAST(:q AS vector) AS v)
             SELECT
@@ -280,10 +283,10 @@ class RetrievalRepo:
         )
         rows = res.mappings().all()
         nodes = [dict(r) for r in rows]
-        
+
         duration = time.perf_counter() - start_time
-        logger.debug(f"Found {len(nodes)} summary nodes in {duration*1000:.2f}ms")
-        
+        logger.debug(f"Found {len(nodes)} summary nodes in {duration * 1000:.2f}ms")
+
         return nodes
 
     async def gather_leaf_chunks(
@@ -297,7 +300,7 @@ class RetrievalRepo:
         node_ids = list(node_ids)
         if not node_ids:
             return []
-            
+
         logger.debug(f"Gathering leaf chunks for {len(node_ids)} nodes with top_k={top_k}")
         start_time = time.perf_counter()
         dim = len(q_vec)
@@ -338,10 +341,10 @@ class RetrievalRepo:
         )
         rows = res.mappings().all()
         chunks = [dict(r) for r in rows]
-        
+
         duration = time.perf_counter() - start_time
-        logger.debug(f"Gathered {len(chunks)} leaf chunks in {duration*1000:.2f}ms")
-        
+        logger.debug(f"Gathered {len(chunks)} leaf chunks in {duration * 1000:.2f}ms")
+
         return chunks
 
     async def traversal_retrieve(
@@ -355,7 +358,7 @@ class RetrievalRepo:
     ) -> list[dict]:
         logger.debug(f"Starting traversal retrieval for dataset {dataset_id} with top_k={top_k}")
         start_time = time.perf_counter()
-        
+
         # 1) root mới nhất
         sql_roots = text("""
             SELECT tn.node_id
@@ -376,7 +379,7 @@ class RetrievalRepo:
         level = 0
         per_level_k = per_level_k or top_k
         dim = len(q_vec)
-        
+
         logger.debug(f"Starting with root node: {root}")
 
         sql_children = text("""
@@ -424,8 +427,10 @@ class RetrievalRepo:
         chunks = await self.gather_leaf_chunks(
             dataset_id=dataset_id, node_ids=current, q_vec=q_vec, top_k=top_k
         )
-        
+
         duration = time.perf_counter() - start_time
-        logger.debug(f"Traversal retrieval completed with {len(chunks)} chunks in {duration*1000:.2f}ms")
-        
+        logger.debug(
+            f"Traversal retrieval completed with {len(chunks)} chunks in {duration * 1000:.2f}ms"
+        )
+
         return chunks

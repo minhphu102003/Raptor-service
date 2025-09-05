@@ -1,21 +1,14 @@
 import argparse
+import asyncio
 from contextlib import asynccontextmanager
-import logging
-import logging.config
-import os
-from pathlib import Path
-import sys
 
-from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-# Load environment variables from .env file
-load_dotenv()
 
 from app.config import settings
 from app.container import Container
 from app.logging_config import setup_logging  # Import the logging setup
+from app.monitor_loop import AddLagHeaderMiddleware, LoopLagMonitor
 from routes.root import root_router
 
 # Import MCP components from local implementation or external package
@@ -63,7 +56,8 @@ if VECTOR_DSN and not VECTOR_DSN.startswith("postgresql+psycopg://"):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.container = Container(orm_async_dsn=ASYNC_DSN, vector_dsn=VECTOR_DSN)
-
+    app.state.loop_monitor = LoopLagMonitor(interval=0.1)
+    asyncio.create_task(app.state.loop_monitor.run())
     # Check if MCP is explicitly enabled via command line or environment
     mcp_enabled = getattr(app.state, "mcp_enabled", settings.mcp.enabled)
 
@@ -104,22 +98,26 @@ async def lifespan(app: FastAPI):
 setup_logging()  # Use the imported setup_logging function
 
 
-# Parse command line arguments
 def create_app():
     parser = argparse.ArgumentParser(description="RAPTOR Service")
     parser.add_argument("--disable-mcp", action="store_true", help="Disable MCP server")
     args, _ = parser.parse_known_args()
 
-    # Create FastAPI app
     app = FastAPI(title="RAPTOR Service", lifespan=lifespan)
 
-    # Store MCP enabled status in app state
     app.state.mcp_enabled = not args.disable_mcp
-
     return app
 
 
 app = create_app()
+
+
+# Add the AddLagHeaderMiddleware in the startup event when the monitor is available
+@app.on_event("startup")
+async def setup_middleware():
+    # Add the middleware with the actual monitor instance
+    app.add_middleware(AddLagHeaderMiddleware, monitor=app.state.loop_monitor)
+
 
 # Add CORS middleware
 app.add_middleware(
@@ -136,17 +134,14 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Event-Loop-Lag-p95-ms"],
 )
 
-# Include the root router with the API prefix
 app.include_router(root_router, prefix=settings.api_prefix)
-
-# Add MCP routes if available and enabled
 mcp_enabled = getattr(app.state, "mcp_enabled", settings.mcp.enabled)
 
 if mcp_enabled and MCP_AVAILABLE:
     try:
-        # Use local SSE endpoint implementation for both external and local MCP
         from mcp.sse_endpoint import mount_sse_endpoints
 
         mount_sse_endpoints(app)

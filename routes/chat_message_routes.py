@@ -2,7 +2,6 @@ import logging
 import time
 
 from fastapi import APIRouter, Request
-from fastapi.responses import StreamingResponse
 
 from controllers.chat_message_controller import ChatMessageController
 from dtos.chat_dto import ChatMessageRequest, EnhancedChatMessageRequest
@@ -14,7 +13,6 @@ from services import (
     GeminiChatLLM,
     ModelRegistry,
     OpenAIClientAsync,
-    QueryRewriteService,
     RetrievalService,
     VoyageEmbeddingClientAsync,
 )
@@ -37,7 +35,7 @@ async def send_chat_message(body: ChatMessageRequest, request: Request):
     """
     logger.info(f"Received chat message request: {body.query}")
     start_time = time.time()
-    
+
     # Initialize services
     logger.debug("Initializing services")
     _fpt = FPTLLMClient(model="DeepSeek-V3")
@@ -59,10 +57,10 @@ async def send_chat_message(body: ChatMessageRequest, request: Request):
 
     controller = ChatMessageController(request, chat_service, answer_service)
     result = await controller.send_chat_message(body)
-    
+
     processing_time = int((time.time() - start_time) * 1000)
     logger.info(f"Chat message request completed in {processing_time}ms")
-    
+
     return result
 
 
@@ -79,7 +77,7 @@ async def send_enhanced_chat_message(body: EnhancedChatMessageRequest, request: 
     """
     logger.info(f"Received enhanced chat message request: {body.query}")
     start_time = time.time()
-    
+
     # Initialize services
     logger.debug("Initializing services")
     _fpt = FPTLLMClient(model="DeepSeek-V3")
@@ -101,8 +99,8 @@ async def send_enhanced_chat_message(body: EnhancedChatMessageRequest, request: 
 
     controller = ChatMessageController(request, chat_service, answer_service)
     result = await controller.send_enhanced_chat_message(body)
-    
+
     processing_time = int((time.time() - start_time) * 1000)
     logger.info(f"Enhanced chat message request completed in {processing_time}ms")
-    
+
     return result
