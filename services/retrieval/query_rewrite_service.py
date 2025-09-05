@@ -1,4 +1,3 @@
-# services/query_rewrite_service.py
 import asyncio
 import os
 from typing import Optional
@@ -60,9 +59,9 @@ class QueryRewriteService:
 
         tok_key = byok_voyage_key or os.getenv("VOYAGEAI_KEY")
 
-        n = count_tokens_total(q, model="voyage-context-3", api_key=tok_key)
+        n = count_tokens_total([q], model="voyage-context-3", api_key=tok_key or "")
         if n <= soft_cap:
             return q
         if n <= hard_cap:
-            return await self._rewrite(q, target_tokens=target_tokens, tokenizer_api_key=tok_key)
+            return await self._rewrite(q, target_tokens=target_tokens)
         raise HTTPException(400, detail="Query quá dài; hãy tóm tắt hoặc upload làm tài liệu.")

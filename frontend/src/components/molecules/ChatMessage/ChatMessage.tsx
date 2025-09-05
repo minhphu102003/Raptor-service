@@ -11,13 +11,28 @@ interface ChatMessageProps {
     content: string;
     timestamp: Date;
     contextPassages?: Array<{
+      id?: string;
       content?: string;
+      score?: number;
+      metadata?: Record<string, unknown>;
+      [key: string]: string | number | boolean | Record<string, unknown> | undefined; // Allow other properties with specific types
     }>;
   };
 }
 
 export const ChatMessage = ({ message }: ChatMessageProps) => {
   const isUser = message.type === 'user';
+  const isStreaming = message.content === 'typing' || (message.type === 'assistant' && message.content === '');
+  
+  // Debug logging to see what's being passed
+  console.log('ChatMessage props:', { 
+    messageId: message.id, 
+    content: message.content, 
+    contextPassages: message.contextPassages,
+    contextPassagesLength: message.contextPassages?.length,
+    type: message.type,
+    isStreaming
+  });
 
   return (
     <motion.div
@@ -43,7 +58,7 @@ export const ChatMessage = ({ message }: ChatMessageProps) => {
             : 'bg-gray-100 text-gray-900'
         }`}
       >
-        {message.content === 'typing' ? (
+        {isStreaming ? (
           <TypingIndicator />
         ) : (
           <>

@@ -10,7 +10,7 @@ import type { FileUploadItem } from '../../molecules'
 import type { Message, ChatSession } from '../../../hooks/useChatState'
 
 // Type for messages that can be displayed in the chat (excluding system messages)
-type DisplayableMessage = Omit<Message, 'type'> & {
+type DisplayableMessage = Message & {
   type: 'user' | 'assistant'
 }
 
@@ -34,6 +34,7 @@ export const ChatArea = ({ className, selectedSession, messages, onSendMessage, 
   }
 
   useEffect(() => {
+    console.log('ChatArea messages updated:', messages)
     scrollToBottom()
   }, [messages])
 
