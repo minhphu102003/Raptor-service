@@ -12,6 +12,7 @@ from services import AnswerService, ChatService
 
 logger = logging.getLogger("raptor.retrieve.controller")
 
+
 class ChatMessageController:
     """Controller for chat message HTTP endpoints"""
 
@@ -25,7 +26,7 @@ class ChatMessageController:
         """Send a message and get AI response with chat context."""
         logger.info(f"Processing chat message: {body.query}")
         start_time = time.time()
-        
+
         uow = self.container.make_uow()
         async with uow:
             repo = RetrievalRepo(uow)
@@ -79,17 +80,17 @@ class ChatMessageController:
                 max_tokens=body.max_tokens,
                 stream=body.stream,
             )
-            
+
             processing_time = int((time.time() - start_time) * 1000)
             logger.info(f"Chat message processed in {processing_time}ms")
-            
+
             return result
 
     async def send_enhanced_chat_message(self, body: EnhancedChatMessageRequest):
         """Send a message and get AI response with enhanced context awareness."""
         logger.info(f"Processing enhanced chat message: {body.query}")
         start_time = time.time()
-        
+
         uow = self.container.make_uow()
         async with uow:
             repo = RetrievalRepo(uow)
@@ -233,7 +234,7 @@ class ChatMessageController:
 
             total_processing_time = int((time.time() - start_time) * 1000)
             logger.info(f"Enhanced chat message processed in {total_processing_time}ms")
-            
+
             return {
                 "answer": text,
                 "model": body.answer_model,

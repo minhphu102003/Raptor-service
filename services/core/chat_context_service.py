@@ -35,13 +35,31 @@ class ChatContextService:
             "message_count": context["message_count"],
             "recent_message_count": len(context["recent_messages"]),
             "system_prompt": context["system_prompt"],
-            "model_info": context["assistant_config"].get("model")
-            if context["assistant_config"]
-            else None,
-            "last_message_timestamp": context["recent_messages"][-1]["timestamp"]
-            if context["recent_messages"]
-            else None,
         }
+
+        # Handle model_info with proper error handling
+        try:
+            assistant_config = context.get("assistant_config")
+            if isinstance(assistant_config, dict):
+                summary["model_info"] = assistant_config.get("model")
+            else:
+                summary["model_info"] = None
+        except (KeyError, TypeError):
+            summary["model_info"] = None
+
+        # Handle last_message_timestamp with proper error handling
+        try:
+            recent_messages = context.get("recent_messages")
+            if isinstance(recent_messages, list) and len(recent_messages) > 0:
+                last_message = recent_messages[-1]
+                if isinstance(last_message, dict) and "timestamp" in last_message:
+                    summary["last_message_timestamp"] = last_message["timestamp"]
+                else:
+                    summary["last_message_timestamp"] = None
+            else:
+                summary["last_message_timestamp"] = None
+        except (KeyError, TypeError, IndexError):
+            summary["last_message_timestamp"] = None
 
         return summary
 

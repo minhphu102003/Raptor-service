@@ -8,7 +8,6 @@ from .chat_session_routes import router as chat_session_router
 from .dataset_routes import router as datasets_router
 from .document_routes import router as documents_router
 
-
 root_router = APIRouter()
 
 

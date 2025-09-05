@@ -1,5 +1,7 @@
 import asyncio
+from collections import deque
 from dataclasses import dataclass
+import heapq
 import logging
 import os
 import re
@@ -21,9 +23,15 @@ load_dotenv()
 @dataclass
 class _ClientSlot:
     key: str
-    client: voyageai.AsyncClient
+    client: voyageai.AsyncClient  # type: ignore
     limiter: RateLimiter
     sem: asyncio.Semaphore
+    # Track when this slot will be available again
+    next_available_time: float = 0.0
+    # Track if this slot is currently rate-limited
+    is_rate_limited: bool = False
+    # Track request count for load balancing
+    request_count: int = 0
 
 
 class VoyageEmbeddingClientAsync:
@@ -56,13 +64,15 @@ class VoyageEmbeddingClientAsync:
 
         self.slots: List[_ClientSlot] = []
         for k in self.keys:
-            cli = voyageai.AsyncClient(api_key=k, max_retries=max_retries)
+            cli = voyageai.AsyncClient(api_key=k, max_retries=max_retries)  # type: ignore
             limiter = RateLimiter(rpm=rpm_limit, tpm=tpm_limit)
             sem = asyncio.Semaphore(per_slot_max_concurrent)
             self.slots.append(_ClientSlot(key=k, client=cli, limiter=limiter, sem=sem))
 
         self._rr = 0
         logger.info("[Voyage] slots=%d", len(self.slots))
+        # Queue for requests waiting for available slots
+        self.waiting_queue = deque()
 
     @staticmethod
     def _collect_api_keys(extra_api_keys: Optional[List[str]]) -> List[str]:
@@ -90,6 +100,119 @@ class VoyageEmbeddingClientAsync:
                 uniq.append(k)
                 seen.add(k)
         return uniq
+
+    def _get_best_available_slot(self) -> Optional[_ClientSlot]:
+        """Get the best available slot (least used or not rate-limited)"""
+        now = time.time()
+        available_slots = []
+
+        for slot in self.slots:
+            # Update rate limit status if enough time has passed
+            if slot.is_rate_limited and now >= slot.next_available_time:
+                slot.is_rate_limited = False
+                slot.next_available_time = 0.0
+
+            # Add to available slots if not rate-limited
+            if not slot.is_rate_limited:
+                available_slots.append(slot)
+
+        if available_slots:
+            # Return the slot with the least request count (load balancing)
+            return min(available_slots, key=lambda s: s.request_count)
+
+        # If all slots are rate-limited, return None
+        return None
+
+    async def _wait_for_best_slot(self) -> _ClientSlot:
+        """Wait for the best available slot and return it"""
+        while True:
+            slot = self._get_best_available_slot()
+            if slot:
+                return slot
+
+            # All slots are rate-limited, find the one that will be available soonest
+            soonest_slot = min(self.slots, key=lambda s: s.next_available_time)
+            now = time.time()
+            wait_time = max(0, soonest_slot.next_available_time - now)
+
+            if wait_time > 0:
+                logger.info(
+                    f"[Voyage] All keys rate-limited, waiting {wait_time:.2f}s for key to become available"
+                )
+                await asyncio.sleep(min(wait_time, 1.0))  # Wait in 1-second increments
+            else:
+                # Slot should be available now
+                soonest_slot.is_rate_limited = False
+                soonest_slot.next_available_time = 0.0
+                return soonest_slot
+
+    async def _embed_queries_with_failover(self, queries: List[str]) -> List[List[float]]:
+        """Embed queries with automatic failover to other keys when rate-limited"""
+        if not queries:
+            return []
+
+        # Get the best available slot
+        slot = await self._wait_for_best_slot()
+        slot.request_count += 1
+
+        total_tok = count_tokens_total(queries, model=self.model, api_key=slot.key)
+        logger.info("[Voyage] embed_queries n=%d total_tokens=%d", len(queries), total_tok)
+
+        last_err = None
+        try:
+            await slot.limiter.acquire(total_tok)
+        except RateLimitError as e:
+            # Mark this slot as rate-limited
+            slot.is_rate_limited = True
+            slot.next_available_time = time.time() + 60  # Assume 1 minute rate limit window
+            slot.request_count -= 1
+            # Try with another slot
+            slot = await self._wait_for_best_slot()
+            slot.request_count += 1
+            await slot.limiter.acquire(total_tok)
+
+        for attempt in range(self.max_retries + 1):
+            try:
+                resp = await slot.client.contextualized_embed(
+                    inputs=[[q] for q in queries],
+                    model=self.model,
+                    input_type="query",
+                    output_dimension=self.out_dim,
+                    output_dtype=self.out_dtype,
+                )
+                slot.request_count -= 1
+                return [list(r.embeddings[0]) for r in resp.results]
+            except RateLimitError as e:
+                last_err = e
+                # Mark this slot as rate-limited
+                slot.is_rate_limited = True
+                slot.next_available_time = time.time() + 60  # Assume 1 minute rate limit window
+                slot.request_count -= 1
+
+                if attempt < self.max_retries:
+                    # Wait for a better slot before retrying
+                    logger.info(
+                        f"[Voyage] Rate limited, switching to another key (attempt {attempt + 1}/{self.max_retries})"
+                    )
+                    slot = await self._wait_for_best_slot()
+                    slot.request_count += 1
+                    continue
+                else:
+                    # All retries exhausted
+                    break
+            except (APIConnectionError, APIError) as e:
+                last_err = e
+                if attempt < self.max_retries:
+                    await asyncio.sleep(min(2**attempt, 8))
+                else:
+                    slot.request_count -= 1
+                    break
+            except Exception as e:
+                slot.request_count -= 1
+                raise e
+
+        slot.request_count -= 1
+        raise last_err or RuntimeError("unknown embedding error")
 
     def _pick_slot(self) -> _ClientSlot:
         slot = self.slots[self._rr % len(self.slots)]
@@ -178,7 +301,8 @@ class VoyageEmbeddingClientAsync:
         for r in results:
             if isinstance(r, Exception):
                 raise r
-            ordered.append(r)
+            # Type cast to help the type checker understand the type after the isinstance check
+            ordered.append(r)  # type: ignore
         ordered.sort(key=lambda x: x[0])
 
         all_embeddings, all_chunks = [], []
@@ -228,24 +352,8 @@ class VoyageEmbeddingClientAsync:
             len(r0.embeddings),
             self.out_dim,
         )
-        return r0.embeddings, chunks
+        return [list(embed) for embed in r0.embeddings], chunks
 
     async def embed_queries(self, queries: List[str]) -> List[List[float]]:
-        if not queries:
-            return []
-
-        slot = self.slots[0]
-
-        total_tok = count_tokens_total(queries, model=self.model, api_key=slot.key)
-        logger.info("[Voyage] embed_queries n=%d total_tokens=%d", len(queries), total_tok)
-
-        await slot.limiter.acquire(total_tok)
-
-        resp = await slot.client.contextualized_embed(
-            inputs=[[q] for q in queries],
-            model=self.model,
-            input_type="query",
-            output_dimension=self.out_dim,
-            output_dtype=self.out_dtype,
-        )
-        return [r.embeddings[0] for r in resp.results]
+        # Use the new failover implementation for better rate limiting handling
+        return await self._embed_queries_with_failover(queries)

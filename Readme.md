@@ -29,7 +29,7 @@
 
 ### 1.1 Sơ đồ dòng dữ liệu (upload → build)
 
-``mermaid
+```mermaid
 flowchart TD
 %% Gate: only .md
 A["Client Upload<br/>(.md or other)"] --> B{"Is Markdown (.md)?"}
@@ -95,7 +95,7 @@ CHK -- "No → done" --> OUT["Finish build<br/>(persist final tree & index)"]
 
 ### 1.2 Sơ đồ dòng truy vấn
 
-``mermaid
+```mermaid
 flowchart TD
   A["POST /v1/retrieve (dataset_id, query, mode, top_k, expand_k, levels_cap, use_reranker, byok_key)"] --> N["Normalize + sanitize query"]
   N --> E["Embed query (Voyage context-3, dim=1024)"]
@@ -128,7 +128,7 @@ flowchart TD
 
 ### 1.3 Sơ đồ trình tự (Async build)
 
-``mermaid
+```mermaid
 sequenceDiagram
 autonumber
 participant C as Client
@@ -738,6 +738,7 @@ Bạn có thể tải xuống file Postman Collection để test các API: [post
 ## 4) 🐳 Docker Setup
 
 ### Prerequisites
+
 - Docker Engine 20.10+
 - Docker Compose 1.29+
 
@@ -783,6 +784,7 @@ docker-compose -f docker-compose.prod.yml up --build -d
 The project uses multi-stage Docker builds for both frontend and backend:
 
 1. **Frontend**:
+
    - Build stage: Node.js with pnpm to build the React application
    - Production stage: Nginx to serve the static files
 
@@ -798,6 +800,7 @@ Environment variables can be set in the `.env` file. See `.env.example` for avai
 ### Volumes
 
 The development setup includes volume mounts for hot reloading:
+
 - Backend: Source code is mounted for live updates
 - Frontend: Source code is mounted for live updates
 
@@ -869,7 +872,8 @@ Vòng lặp theo tầng chạy đến khi đạt điều kiện dừng:
 
 ## 6) Mô hình dữ liệu
 
-```
+```mermaid
+classDiagram
 class Document {
 +doc_id: string
 +dataset_id: string
@@ -1043,7 +1047,7 @@ The RAPTOR service supports integration with remote LLM services through the Mod
 
 ### Architecture
 
-```
+```mermaid
 flowchart TD
     A[AI Assistant] --> B[MCP Client]
     B --> C[RAPTOR MCP Server]

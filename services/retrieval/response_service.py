@@ -88,7 +88,9 @@ class ResponseService:
         tokens_to_use = max_tokens or 8000
         stream_to_use = stream if stream is not None else False
 
-        logger.debug(f"Using model: {model_to_use}, temperature: {temp_to_use}, max_tokens: {tokens_to_use}")
+        logger.debug(
+            f"Using model: {model_to_use}, temperature: {temp_to_use}, max_tokens: {tokens_to_use}"
+        )
 
         client = self.model_registry.get_client(model_to_use, body)
 
@@ -111,10 +113,12 @@ class ResponseService:
                 ):
                     response_chunks.append(chunk)
                     yield chunk
-                
+
                 llm_time = _ms_since(llm_start_time)
-                logger.info(f"LLM streaming generation completed in {llm_time}ms", 
-                           extra={"span": "llm.streaming", "ms": llm_time})
+                logger.info(
+                    f"LLM streaming generation completed in {llm_time}ms",
+                    extra={"span": "llm.streaming", "ms": llm_time},
+                )
 
                 if session_id:
                     full_response = "".join(response_chunks)
@@ -143,8 +147,10 @@ class ResponseService:
             max_tokens=tokens_to_use,
         )
         llm_time = _ms_since(llm_start_time)
-        logger.info(f"LLM generation completed in {llm_time}ms", 
-                   extra={"span": "llm.generation", "ms": llm_time})
+        logger.info(
+            f"LLM generation completed in {llm_time}ms",
+            extra={"span": "llm.generation", "ms": llm_time},
+        )
 
         processing_time = int((time.time() - start_time) * 1000)
         logger.debug(f"Generation completed in {processing_time}ms")
@@ -200,7 +206,7 @@ class ResponseService:
     async def answer(self, body, repo: RetrievalRepo) -> Union[StreamingResponse, Dict[str, Any]]:
         logger.info(f"Starting answer for query: {body.query}")
         start_time = time.time()
-        
+
         ret = await self.retrieval_svc.retrieve(body, repo=repo)
         if ret.get("code") != 200:
             logger.error(f"Retrieval failed with code: {ret.get('code', 500)}")
@@ -222,9 +228,9 @@ class ResponseService:
         )
 
         client = self.model_registry.get_client(body.answer_model, body)
-        
+
         logger.debug(f"Using model: {body.answer_model}")
-        
+
         if body.stream:
             logger.debug("Streaming response enabled")
 
@@ -238,10 +244,12 @@ class ResponseService:
                 ):
                     response_chunks.append(chunk)
                     yield chunk
-                
+
                 llm_time = _ms_since(llm_start_time)
-                logger.info(f"LLM streaming generation completed in {llm_time}ms", 
-                           extra={"span": "llm.streaming", "ms": llm_time})
+                logger.info(
+                    f"LLM streaming generation completed in {llm_time}ms",
+                    extra={"span": "llm.streaming", "ms": llm_time},
+                )
 
             return StreamingResponse(_gen(), media_type="text/plain")
 
@@ -254,9 +262,11 @@ class ResponseService:
             max_tokens=body.max_tokens,
         )
         llm_time = _ms_since(llm_start_time)
-        logger.info(f"LLM generation completed in {llm_time}ms", 
-                   extra={"span": "llm.generation", "ms": llm_time})
-        
+        logger.info(
+            f"LLM generation completed in {llm_time}ms",
+            extra={"span": "llm.generation", "ms": llm_time},
+        )
+
         processing_time = int((time.time() - start_time) * 1000)
         logger.debug(f"Generation completed in {processing_time}ms")
 
@@ -268,6 +278,6 @@ class ResponseService:
             "passages": normalized_passages[: body.top_k],
             "llm_generation_time_ms": llm_time,  # Include LLM time in response
         }
-        
+
         logger.info(f"Answer completed in {processing_time}ms")
         return result

@@ -48,7 +48,7 @@ async def rag_retrieve(
         # Initialize services needed for retrieval
         fpt_client = FPTLLMClient(model="DeepSeek-V3")
         voyage_client = VoyageEmbeddingClientAsync(model="voyage-context-3", out_dim=1024)
-        retrieval_svc = RetrievalService( embed_svc=voyage_client)
+        retrieval_svc = RetrievalService(embed_svc=voyage_client)
 
         # Create the retrieval body
         retrieve_body = RetrieveBody(

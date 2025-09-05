@@ -68,9 +68,21 @@ def setup_logging() -> None:
             "gemini": {"level": "INFO", "handlers": ["console", "app_daily"], "propagate": False},
             "storage": {"level": "INFO", "handlers": ["console", "app_daily"], "propagate": False},
             "cluster": {"level": "INFO", "handlers": ["console", "app_daily"], "propagate": False},
-            "raptor.retrieve": {"handlers": ["console", "debug_file"], "level": "DEBUG", "propagate": False},
-            "raptor.retrieve.db": {"handlers": ["console_detailed", "debug_file"], "level": "DEBUG", "propagate": False},
-            "raptor.retrieve.response": {"handlers": ["console_detailed", "debug_file"], "level": "DEBUG", "propagate": False},
+            "raptor.retrieve": {
+                "handlers": ["console", "debug_file"],
+                "level": "DEBUG",
+                "propagate": False,
+            },
+            "raptor.retrieve.db": {
+                "handlers": ["console_detailed", "debug_file"],
+                "level": "DEBUG",
+                "propagate": False,
+            },
+            "raptor.retrieve.response": {
+                "handlers": ["console_detailed", "debug_file"],
+                "level": "DEBUG",
+                "propagate": False,
+            },
             "raptor.chunking.langchain": {
                 "handlers": ["console"],
                 "level": "INFO",

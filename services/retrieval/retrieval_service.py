@@ -1,15 +1,9 @@
 import logging
-import os
 from statistics import median
 import time
 from typing import Literal, Optional
 
-from dotenv import load_dotenv
 from pydantic import BaseModel
-
-from utils.packing import count_tokens_total
-
-load_dotenv()
 
 logger = logging.getLogger("raptor.retrieve")
 
@@ -48,7 +42,6 @@ class RetrievalService:
             "retrieve.start",
             extra={"span": "retrieve.start", "ms": 0, "extra": {}, **base_extra},
         )
-        api_key: str | None = os.getenv("VOYAGEAI_KEY")
 
         # Use the original query directly instead of rewriting
         q_norm = body.query
