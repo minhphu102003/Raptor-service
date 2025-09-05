@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 from typing import Any, Dict, List, Optional, Union
@@ -136,6 +137,19 @@ class ResponseService:
                         processing_time_ms=processing_time,
                     )
 
+                    # Send context_passages in the final chunk as JSON
+                    final_data = {
+                        "answer": full_response,
+                        "model": model_to_use,
+                        "top_k": body.top_k,
+                        "mode": body.mode,
+                        "passages": normalized_passages[: body.top_k],
+                        "session_id": session_id,
+                        "processing_time_ms": processing_time,
+                        "llm_generation_time_ms": llm_time,
+                    }
+                    yield f"\n{json.dumps(final_data, ensure_ascii=False)}"
+
             return StreamingResponse(_gen(), media_type="text/plain")
 
         logger.debug("Starting non-streaming generation")
@@ -250,6 +264,17 @@ class ResponseService:
                     f"LLM streaming generation completed in {llm_time}ms",
                     extra={"span": "llm.streaming", "ms": llm_time},
                 )
+
+                # Send context_passages in the final chunk as JSON
+                final_data = {
+                    "answer": "".join(response_chunks),
+                    "model": body.answer_model,
+                    "top_k": body.top_k,
+                    "mode": body.mode,
+                    "passages": normalized_passages[: body.top_k],
+                    "llm_generation_time_ms": llm_time,
+                }
+                yield f"\n{json.dumps(final_data, ensure_ascii=False)}"
 
             return StreamingResponse(_gen(), media_type="text/plain")
 

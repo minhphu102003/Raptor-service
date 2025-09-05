@@ -1,7 +1,6 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { motion } from 'framer-motion';
-// Typing effect is now handled in the ChatMessage component, so we don't need to import it here
 
 interface MessageContentProps {
   content: string;

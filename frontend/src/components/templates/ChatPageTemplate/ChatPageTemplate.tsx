@@ -47,7 +47,6 @@ export const ChatPageTemplate = ({ className }: ChatPageTemplateProps) => {
   
   const [isSwitchingSession, setIsSwitchingSession] = useState(false)
   const [previousSelectedSession, setPreviousSelectedSession] = useState<string | null>(null)
-  const [isSendingMessage, setIsSendingMessage] = useState(false)
 
   // Handle session switching with loading effect
   useEffect(() => {
@@ -248,7 +247,6 @@ export const ChatPageTemplate = ({ className }: ChatPageTemplateProps) => {
                 selectedSession={selectedSession}
                 messages={messages}
                 onSendMessage={handleSendMessage}
-                isSendingMessage={isSendingMessage}
               />
             )}
           </motion.div>

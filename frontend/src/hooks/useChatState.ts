@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { UuidUtils } from '../utils'
-import { chatService, type CreateSessionRequest, type ChatMessageRequest, type EnhancedChatMessageRequest } from '../services/chatService'
+import { chatService } from '../services/chatService'
+import type { CreateSessionRequest, ChatMessageRequest, EnhancedChatMessageRequest } from '../services/chatTypes'
 
 // Type definitions
 export interface Assistant {
@@ -239,7 +240,7 @@ export const useChatState = () => {
     return newMessage
   }, [selectedSession, messages])
 
-  // Send message to assistant
+  // Send message to assistant with streaming support
   const sendMessageToAssistant = useCallback(async (content: string, sessionId: string, datasetId: string) => {
     try {
       // Create user message first and add it immediately to the UI
@@ -272,13 +273,14 @@ export const useChatState = () => {
         id: loadingMessageId,
         sessionId: sessionId,
         type: 'assistant',
-        content: 'typing', // Special marker for loading state
-        timestamp: new Date()
+        content: '', // Empty content for streaming
+        timestamp: new Date(),
+        contextPassages: [] // Initialize with empty context passages
       };
       
       setMessages(prev => [...prev, loadingMessage]);
 
-      // Create message request
+      // Create message request with streaming enabled
       const messageRequest: ChatMessageRequest = {
         query: content,
         dataset_id: datasetId,
@@ -290,14 +292,27 @@ export const useChatState = () => {
         top_k: 5,
         expand_k: 5,
         mode: 'tree',
-        stream: false
+        stream: true // Enable streaming
       }
 
-      // Send message to backend
-      const response = await chatService.sendMessage(messageRequest)
-      console.log('Processed chat response:', response)
+      // Send message to backend with streaming
+      let accumulatedContent = '';
+      const response = await chatService.sendMessageStream(messageRequest, (chunk) => {
+        // Accumulate content and update the loading message
+        console.groupCollapsed('[stream chunk]');
+        console.log('typeof:', typeof chunk);
+        console.log('raw chunk:', chunk);
+        console.groupEnd();
+        
+        accumulatedContent += chunk;
+        setMessages(prev => prev.map(msg => 
+          msg.id === loadingMessageId 
+            ? { ...msg, content: accumulatedContent }
+            : msg
+        ));
+      });
       
-      // Remove the loading message
+      // Remove the loading message and add the final message
       setMessages(prev => prev.filter(msg => msg.id !== loadingMessageId));
       
       // Handle the response based on its format
@@ -313,7 +328,7 @@ export const useChatState = () => {
           type: 'assistant' as const,
           content: response.assistant_message.content,
           timestamp: new Date(response.assistant_message.created_at),
-          contextPassages: response.assistant_message.context_passages
+          contextPassages: response.assistant_message.context_passages || []
         };
       } else {
         // Handle direct response format (answer, passages, etc.)
@@ -323,7 +338,7 @@ export const useChatState = () => {
           type: 'assistant',
           content: response && typeof response === 'object' && 'answer' in response 
             ? response.answer 
-            : 'Sorry, I couldn\'t process that request.',
+            : accumulatedContent || 'Sorry, I couldn\'t process that request.',
           timestamp: new Date(),
           contextPassages: response && typeof response === 'object' && 'passages' in response 
             ? response.passages 
@@ -347,18 +362,22 @@ export const useChatState = () => {
       
       return { userMessage, assistantMessage }
     } catch (error) {
-      console.error('Failed to send message:', error)
+      console.error('Failed to send message:', error);
+      
+      // Remove the loading message if it exists
+      setMessages(prev => prev.filter(msg => !msg.content || msg.content !== ''));
       
       // Add error message to UI
       const errorMessage: Message = {
         id: UuidUtils.generateMessageId(),
         sessionId: sessionId,
         type: 'assistant',
-        content: 'Sorry, I encountered an error processing your request. Please try again.',
-        timestamp: new Date()
+        content: `Sorry, I encountered an error processing your request: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
+        timestamp: new Date(),
+        contextPassages: [] // Include empty context passages for consistency
       };
       
-      setMessages(prev => [...prev, errorMessage])
+      setMessages(prev => [...prev, errorMessage]);
       
       // Update session message count for error message
       if (selectedSession) {
@@ -372,11 +391,11 @@ export const useChatState = () => {
         ))
       }
       
-      throw error
+      throw error;
     }
   }, [selectedAssistant, selectedSession])
 
-  // Send enhanced message to assistant
+  // Send enhanced message to assistant with streaming support
   const sendEnhancedMessageToAssistant = useCallback(async (content: string, sessionId: string, datasetId: string, additionalContext?: Record<string, unknown>) => {
     try {
       // Create user message first and add it immediately to the UI
@@ -409,13 +428,14 @@ export const useChatState = () => {
         id: loadingMessageId,
         sessionId: sessionId,
         type: 'assistant',
-        content: 'typing', // Special marker for loading state
-        timestamp: new Date()
+        content: '', // Empty content for streaming
+        timestamp: new Date(),
+        contextPassages: [] // Initialize with empty context passages
       };
       
       setMessages(prev => [...prev, loadingMessage]);
 
-      // Create enhanced message request
+      // Create enhanced message request with streaming enabled
       const messageRequest: EnhancedChatMessageRequest = {
         query: content,
         dataset_id: datasetId,
@@ -430,14 +450,27 @@ export const useChatState = () => {
         top_k: 5,
         expand_k: 5,
         mode: 'tree',
-        stream: false
+        stream: true // Enable streaming
       }
 
-      // Send enhanced message to backend
-      const response = await chatService.sendEnhancedMessage(messageRequest)
-      console.log('Processed enhanced chat response:', response)
+      // Send enhanced message to backend with streaming
+      let accumulatedContent = '';
+      const response = await chatService.sendEnhancedMessageStream(messageRequest, (chunk) => {
+        // Accumulate content and update the loading message
+        console.groupCollapsed('[enhanced stream chunk]');
+        console.log('typeof:', typeof chunk);
+        console.log('raw chunk:', chunk);
+        console.groupEnd();
+        
+        accumulatedContent += chunk;
+        setMessages(prev => prev.map(msg => 
+          msg.id === loadingMessageId 
+            ? { ...msg, content: accumulatedContent }
+            : msg
+        ));
+      });
       
-      // Remove the loading message
+      // Remove the loading message and add the final message
       setMessages(prev => prev.filter(msg => msg.id !== loadingMessageId));
       
       // Handle the response based on its format
@@ -453,7 +486,7 @@ export const useChatState = () => {
           type: 'assistant' as const,
           content: response.assistant_message.content,
           timestamp: new Date(response.assistant_message.created_at),
-          contextPassages: response.assistant_message.context_passages
+          contextPassages: response.assistant_message.context_passages || []
         };
       } else {
         // Handle direct response format (answer, passages, etc.)
@@ -463,7 +496,7 @@ export const useChatState = () => {
           type: 'assistant',
           content: response && typeof response === 'object' && 'answer' in response 
             ? response.answer 
-            : 'Sorry, I couldn\'t process that request.',
+            : accumulatedContent || 'Sorry, I couldn\'t process that request.',
           timestamp: new Date(),
           contextPassages: response && typeof response === 'object' && 'passages' in response 
             ? response.passages 
@@ -487,18 +520,22 @@ export const useChatState = () => {
       
       return { userMessage, assistantMessage }
     } catch (error) {
-      console.error('Failed to send enhanced message:', error)
+      console.error('Failed to send enhanced message:', error);
+      
+      // Remove the loading message if it exists
+      setMessages(prev => prev.filter(msg => !msg.content || msg.content !== ''));
       
       // Add error message to UI
       const errorMessage: Message = {
         id: UuidUtils.generateMessageId(),
         sessionId: sessionId,
         type: 'assistant',
-        content: 'Sorry, I encountered an error processing your request. Please try again.',
-        timestamp: new Date()
+        content: `Sorry, I encountered an error processing your request: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
+        timestamp: new Date(),
+        contextPassages: [] // Include empty context passages for consistency
       };
       
-      setMessages(prev => [...prev, errorMessage])
+      setMessages(prev => [...prev, errorMessage]);
       
       // Update session message count for error message
       if (selectedSession) {
@@ -512,7 +549,7 @@ export const useChatState = () => {
         ))
       }
       
-      throw error
+      throw error;
     }
   }, [selectedAssistant, selectedSession])
 
