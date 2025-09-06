@@ -2,11 +2,12 @@ import asyncio
 import json
 import os
 from pathlib import Path
+from typing import Callable  # Add missing import
 
 from dotenv import load_dotenv
 import voyageai
 
-from services.voyage.voyage_client import VoyageEmbeddingClientAsync
+from services.providers.voyage.voyage_client import VoyageEmbeddingClientAsync
 
 
 def make_chunk_fn() -> "Callable[[str], list[str]]":
@@ -58,12 +59,12 @@ async def main():
         else "This is a tiny document for full-text embedding."
     )
 
-    client = VoyageEmbeddingClientAsync(
-        api_key=api_key, model=model, out_dim=out_dim, out_dtype=out_dtype
-    )
+    # Fix constructor call - remove api_key parameter as it's not in the constructor
+    client = VoyageEmbeddingClientAsync(model=model, out_dim=out_dim, out_dtype=out_dtype)
 
-    embs, chunk_texts = await client.embed_doc_fulltext(
-        text, chunk=use_chunk, chunk_fn=make_chunk_fn() if use_chunk else None
+    # Fix method call - use embed_doc_fulltext_multi instead of embed_doc_fulltext
+    embs, chunk_texts = await client.embed_doc_fulltext_multi(
+        text, chunk_fn=make_chunk_fn() if use_chunk else None
     )
 
     out = {
