@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from mcp.tools.rag_retrieve import rag_retrieve
+from mcp_local.tools.rag_retrieve import rag_retrieve
 
 
 @pytest.mark.asyncio
@@ -38,7 +38,7 @@ async def test_rag_retrieve_with_container():
     mock_uow.__aexit__ = AsyncMock(return_value=None)
 
     # Patch the services in the rag_retrieve function
-    import mcp.tools.rag_retrieve as rag_retrieve_module
+    import mcp_local.tools.rag_retrieve as rag_retrieve_module
     import services as services_module
     import services.embedding.embedding_query_service as embedding_service_module
 
@@ -128,7 +128,7 @@ async def test_rag_retrieve_retrieval_failure():
     mock_uow.__aexit__ = AsyncMock(return_value=None)
 
     # Patch the services in the rag_retrieve function
-    import mcp.tools.rag_retrieve as rag_retrieve_module
+    import mcp_local.tools.rag_retrieve as rag_retrieve_module
     import services as services_module
     import services.embedding.embedding_query_service as embedding_service_module
 

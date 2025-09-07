@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from mcp.mcp_client import MCPClient, MCPModelAdapter
-from mcp.mcp_service import MCPService
+from mcp_local.mcp_client import MCPClient, MCPModelAdapter
+from mcp_local.mcp_service import MCPService
 
 
 @pytest.fixture

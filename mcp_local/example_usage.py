@@ -8,7 +8,7 @@ import asyncio
 
 from fastapi import FastAPI
 
-from mcp.raptor_mcp_server import RaptorMCPService, create_standalone_mcp_service
+from mcp_local.raptor_mcp_server import RaptorMCPService, create_standalone_mcp_service
 
 
 # Example 1: Integration with FastAPI application
@@ -61,7 +61,7 @@ async def use_mcp_tools():
     Example of how to use MCP tools directly in your application code.
     """
     try:
-        from mcp.tools import create_chat_session, list_datasets, rag_retrieve
+        from mcp_local.tools import create_chat_session, list_datasets, rag_retrieve
 
         # These would normally be called by an AI assistant through the MCP protocol
         # But you can also call them directly in your application code

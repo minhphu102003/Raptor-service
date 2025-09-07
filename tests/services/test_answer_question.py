@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from mcp.tools.document_tools import answer_question
+from mcp_local.tools.document_tools import answer_question
 
 
 @pytest.mark.asyncio
@@ -46,7 +46,7 @@ async def test_answer_question_with_container():
     )
 
     # Patch the services in the answer_question function
-    import mcp.tools.document_tools as document_tools_module
+    import mcp_local.tools.document_tools as document_tools_module
 
     original_fpt_client = document_tools_module.FPTLLMClient
     original_voyage_client = document_tools_module.VoyageEmbeddingClientAsync
@@ -120,7 +120,7 @@ async def test_answer_question_retrieval_failure():
     mock_uow.__aexit__ = AsyncMock(return_value=None)
 
     # Mock the services in the answer_question function
-    import mcp.tools.document_tools as document_tools_module
+    import mcp_local.tools.document_tools as document_tools_module
 
     original_fpt_client = document_tools_module.FPTLLMClient
     original_voyage_client = document_tools_module.VoyageEmbeddingClientAsync

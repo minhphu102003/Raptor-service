@@ -4,10 +4,14 @@ VoyageAI rate-limit probes (RPM & TPM) after adding a payment method.
 - TPM target (Basic): ~3,000,000 TPM
 Models covered: voyage-context-3 (contextualized endpoint), voyage-3-large, voyage-code-3, voyage-2, voyage-lite-2 (embeddings endpoint)
 """
-import os, asyncio, time, math
-from typing import List, Tuple
-from dotenv import load_dotenv
 
+import asyncio
+import math
+import os
+import time
+from typing import List, Tuple
+
+from dotenv import load_dotenv
 import voyageai
 
 load_dotenv()
@@ -17,9 +21,11 @@ MODELS = [
     "voyage-context-3",
 ]
 
+
 # ---------- helpers ----------
 def is_contextual_model(model: str) -> bool:
     return model.strip().lower() == "voyage-context-3"
+
 
 async def small_request(ac: voyageai.AsyncClient, model: str):
     """A tiny request to probe RPM without consuming TPM."""
@@ -28,6 +34,7 @@ async def small_request(ac: voyageai.AsyncClient, model: str):
     else:
         return await ac.embed(texts=["x"], model=model, input_type="document")
 
+
 async def big_request(ac: voyageai.AsyncClient, model: str, texts: List[str]):
     """A larger request (many tokens) to probe TPM with low RPM."""
     if is_contextual_model(model):
@@ -35,11 +42,15 @@ async def big_request(ac: voyageai.AsyncClient, model: str, texts: List[str]):
     else:
         return await ac.embed(texts=texts, model=model, input_type="document")
 
+
 def synth_text(repeat_chars: int) -> str:
     # simple filler; ~4 chars ~ 1 token (xấp xỉ). Ta sẽ hiệu chỉnh bằng count_tokens.
     return ("x" * repeat_chars) + " "
 
-def pack_texts_for_tokens(sync_client: voyageai.Client, total_target_tokens: int, per_text_tokens_goal: int = 2000) -> List[str]:
+
+def pack_texts_for_tokens(
+    sync_client: voyageai.Client, total_target_tokens: int, per_text_tokens_goal: int = 2000
+) -> List[str]:
     """
     Tạo danh sách texts có tổng ~ total_target_tokens token.
     Dùng count_tokens để hiệu chỉnh cỡ text thực tế quanh per_text_tokens_goal.
@@ -47,14 +58,15 @@ def pack_texts_for_tokens(sync_client: voyageai.Client, total_target_tokens: int
     # 1) tạo một text xấp xỉ per_text_tokens_goal
     guess_chars = max(8, per_text_tokens_goal * 4)  # 4 chars ≈ 1 token (thô)
     txt = synth_text(guess_chars)
+
     # tinh chỉnh để gần per_text_tokens_goal
     # tăng/giảm chiều dài cho đến khi count_tokens gần mục tiêu (±10%)
     def measure(tokens_goal: int, base: str) -> str:
-        lo, hi = int(len(base)*0.5), int(len(base)*1.5)
+        lo, hi = int(len(base) * 0.5), int(len(base) * 1.5)
         best = base
         best_err = 10**9
-        for L in [int(lo + (hi-lo)*k/6) for k in range(7)]:
-            cand = base[:max(8, L)]
+        for L in [int(lo + (hi - lo) * k / 6) for k in range(7)]:
+            cand = base[: max(8, L)]
             toks = sync_client.count_tokens([cand])
             err = abs(toks - tokens_goal)
             if err < best_err:
@@ -77,13 +89,23 @@ def pack_texts_for_tokens(sync_client: voyageai.Client, total_target_tokens: int
 
     return texts
 
+
 async def rpm_probe(ac: voyageai.AsyncClient, model: str) -> Tuple[int, int]:
     """
     Ramp RPS to see where 429 appears.
     Returns: (total_success, total_errors)
     """
     print(f"\n[RPM PROBE] {model}")
-    stages = [(5,10), (10,10), (15,10), (20,10), (25,10), (30,10), (33,10), (35,10)]  # (rps, seconds)
+    stages = [
+        (5, 10),
+        (10, 10),
+        (15, 10),
+        (20, 10),
+        (25, 10),
+        (30, 10),
+        (33, 10),
+        (35, 10),
+    ]  # (rps, seconds)
     total_ok = total_err = 0
     first_429_rps = None
 
@@ -101,8 +123,11 @@ async def rpm_probe(ac: voyageai.AsyncClient, model: str) -> Tuple[int, int]:
                 first_429_rps = rps
             await asyncio.sleep(1)
 
-    print(f"  -> RPM probe done. success={total_ok}, errors={total_err}, first_429_at_rps={first_429_rps}")
+    print(
+        f"  -> RPM probe done. success={total_ok}, errors={total_err}, first_429_at_rps={first_429_rps}"
+    )
     return total_ok, total_err
+
 
 async def tpm_probe(ac: voyageai.AsyncClient, sync_client: voyageai.Client, model: str):
     """
@@ -115,15 +140,21 @@ async def tpm_probe(ac: voyageai.AsyncClient, sync_client: voyageai.Client, mode
     cooldown = 30  # giãn giữa lượt để cửa sổ 1 phút trượt bớt
 
     for tgt in TARGETS:
-        texts = pack_texts_for_tokens(sync_client, total_target_tokens=tgt, per_text_tokens_goal=per_req_goal)
+        texts = pack_texts_for_tokens(
+            sync_client, total_target_tokens=tgt, per_text_tokens_goal=per_req_goal
+        )
         est_tokens = sync_client.count_tokens(texts)
         # số req (mỗi req = 1 payload lớn); đặt 20-40 req/phút để RPM << 2000
         # ở đây dùng 20 req/phút nếu est_tokens > 150k, ngược lại gom lại để không tăng RPM.
-        reqs_per_minute = 20 if est_tokens >= 150_000 else max(5, math.ceil(150_000 / max(1, est_tokens)))
+        reqs_per_minute = (
+            20 if est_tokens >= 150_000 else max(5, math.ceil(150_000 / max(1, est_tokens)))
+        )
         duration_sec = 60
         interval = duration_sec / reqs_per_minute
 
-        print(f"  target≈{tgt:,} tokens/min; per_request≈{est_tokens:,} tokens; rpm≈{reqs_per_minute}")
+        print(
+            f"  target≈{tgt:,} tokens/min; per_request≈{est_tokens:,} tokens; rpm≈{reqs_per_minute}"
+        )
         errors = 0
         start = time.monotonic()
         sent = 0
@@ -140,6 +171,7 @@ async def tpm_probe(ac: voyageai.AsyncClient, sync_client: voyageai.Client, mode
         print(f"    sent={sent}, errors={errors}")
         # cooldown một chút giữa các mức
         await asyncio.sleep(cooldown)
+
 
 async def main():
     if not API_KEY:
@@ -163,6 +195,7 @@ async def main():
         finally:
             # nghỉ giữa các model để làm sạch cửa sổ rate limit
             await asyncio.sleep(60)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -37,6 +37,7 @@ dependencies = [
   "mcp[cli]>=1.0.0",
   "aiohttp>=3.8.0",
   "uvicorn>=0.20.0",
+  "fastmcp>=2.12.2",
 ]
 
 [build-system]
@@ -56,7 +57,7 @@ ignore = []
 
 [tool.ruff.lint.isort]
 # chỉnh theo tên package thực tế của bạn (ví dụ infra, interfaces_adaptor, domain, usecases)
-known-first-party = ["app", "repositories", "interfaces_adaptor", "services", "utils", "constants", "db", "uow", "routes", "controllers", "dtos", "mcp"]
+known-first-party = ["app", "repositories", "interfaces_adaptor", "services", "utils", "constants", "db", "uow", "routes", "controllers", "dtos", "mcp_local"]
 force-sort-within-sections = true
 
 [tool.commitizen]

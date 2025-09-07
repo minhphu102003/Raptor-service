@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from mcp.tools.rag_summarize import rag_summarize
+from mcp_local.tools.rag_summarize import rag_summarize
 
 
 @pytest.mark.asyncio
@@ -30,7 +30,7 @@ async def test_rag_summarize_with_container():
     mock_uow.__aexit__ = AsyncMock(return_value=None)
 
     # Patch the summarizer in the rag_summarize function
-    import mcp.tools.rag_summarize as rag_summarize_module
+    import mcp_local.tools.rag_summarize as rag_summarize_module
 
     original_llm_summarizer = rag_summarize_module.LLMSummarizer
     original_make_llm = rag_summarize_module.make_llm

@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 # Updated imports to use the new separate modules
-from mcp.tools.rag_node import rag_node_children, rag_node_get
+from mcp_local.tools.rag_node import rag_node_children, rag_node_get
 
 
 class TestRAGTools:
