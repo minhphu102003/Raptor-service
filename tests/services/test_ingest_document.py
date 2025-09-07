@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from mcp.tools.base_tools import ingest_document
+from mcp_local.tools.base_tools import ingest_document
 
 
 @pytest.mark.asyncio

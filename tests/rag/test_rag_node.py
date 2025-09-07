@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from mcp.tools.rag_node import rag_node_children, rag_node_get, rag_node_navigation
+from mcp_local.tools.rag_node import rag_node_children, rag_node_get, rag_node_navigation
 
 
 @pytest.mark.asyncio

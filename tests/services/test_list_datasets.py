@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from mcp.tools.base_tools import list_datasets
+from mcp_local.tools.base_tools import list_datasets
 
 
 @pytest.mark.asyncio

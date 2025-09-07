@@ -7,13 +7,11 @@ import asyncio
 import logging
 from typing import Any, Dict
 
-from services import (
-    FPTLLMClient,
-    QueryRewriteService,
-    RetrievalService,
-    RetrieveBody,
-    VoyageEmbeddingClientAsync,
-)
+from services.providers.fpt_llm import FPTLLMClient
+from services.providers.voyage import VoyageEmbeddingClientAsync
+
+# Fix the import paths
+from services.retrieval.retrieval_service import RetrievalService, RetrieveBody
 
 logger = logging.getLogger("raptor.mcp.tools.document")
 

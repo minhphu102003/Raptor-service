@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 # Updated import to use the new separate module
-from mcp.tools.rag_summarize import rag_summarize
+from mcp_local.tools.rag_summarize import rag_summarize
 
 
 @pytest.mark.asyncio

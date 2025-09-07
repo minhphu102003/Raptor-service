@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 # Updated import to use the new separate module
-from mcp.tools.rag_node import rag_node_navigation
+from mcp_local.tools.rag_node import rag_node_navigation
 
 
 @pytest.mark.asyncio

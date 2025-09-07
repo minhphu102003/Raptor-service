@@ -23,6 +23,7 @@ from .tools.resources import read_resource as _read_resource
 try:
     from mcp.server.fastmcp import FastMCP  # type: ignore
     from mcp.server.session import ServerSession
+    from mcp.server.stdio import stdio_server
     from mcp.types import Resource, Tool
 
     MCP_AVAILABLE = True
@@ -193,6 +194,15 @@ class RaptorMCPService:
         """Get the MCP server instance"""
         return self.mcp
 
+    def mount_to_fastapi(self, app, path: str = "/mcp"):
+        """Mount the MCP server to a FastAPI application"""
+        if not self.mcp:
+            raise RuntimeError("MCP not available. Install with: pip install mcp[cli]")
+
+        # Mount the MCP server using the correct method
+        app.mount(path, self.mcp.streamable_http_app())
+        logger.info(f"MCP server mounted to {path}")
+
     async def start_server(self, host: str = "127.0.0.1", port: int = 3333):
         """
         Start the MCP server.
@@ -205,14 +215,48 @@ class RaptorMCPService:
             raise RuntimeError("MCP not available. Install with: pip install mcp[cli]")
 
         try:
+            from fastapi import FastAPI
             import uvicorn
 
+            # Create a FastAPI app and mount the MCP server correctly
+            app = FastAPI()
+
+            # Mount the MCP server using the correct path
+            app.mount("/mcp", self.mcp.streamable_http_app())
+            logger.info("MCP server mounted to /mcp")
+
             logger.info(f"Starting RAPTOR MCP server on {host}:{port}")
-            # This would normally start the server, but we'll let FastAPI handle it
-            # when mounted to the main app
+            config = uvicorn.Config(app, host=host, port=port, log_level="info")
+            server = uvicorn.Server(config)
+            await server.serve()
         except ImportError:
             logger.error("uvicorn not available for MCP server")
             raise
+        except Exception as e:
+            logger.error(f"Error starting MCP server: {e}")
+            raise
+
+    async def run_stdio(self):
+        """
+        Run the MCP server over stdio for local usage.
+        This allows the server to communicate through standard input/output.
+        """
+        if not self.mcp:
+            raise RuntimeError("MCP not available. Install with: pip install mcp[cli]")
+
+        # Check if stdio_server is available (it might not be if MCP is not properly installed)
+        try:
+            from mcp.server.stdio import stdio_server
+        except ImportError:
+            raise RuntimeError("MCP stdio_server not available. Install with: pip install mcp[cli]")
+
+        # Run the server over stdio
+        async with stdio_server() as (read_stream, write_stream):
+            await self.mcp.run(
+                read_stream,
+                write_stream,
+                app_done=asyncio.Future(),  # Create a future that never completes for continuous operation
+            )
 
 
 # For standalone usage, we need to provide a way to create the service
@@ -256,14 +300,6 @@ def create_standalone_mcp_service(db_dsn: Optional[str] = None, vector_dsn: Opti
 # This global instance is only for backward compatibility and should not be used in the FastAPI app
 raptor_mcp_service = None
 
-# Only create the global instance if we're running this module directly
-if __name__ == "__main__":
-    try:
-        raptor_mcp_service = create_standalone_mcp_service()
-    except Exception as e:
-        logger.warning(f"Could not create global MCP service instance: {e}")
-        raptor_mcp_service = None
-
 
 if __name__ == "__main__":
     # Example of how to run the MCP server standalone
@@ -275,11 +311,19 @@ if __name__ == "__main__":
             try:
                 # Create service with proper container for standalone usage
                 service = create_standalone_mcp_service()
-                if len(sys.argv) > 1 and sys.argv[1] == "serve":
-                    await service.start_server()
+                if len(sys.argv) > 1:
+                    if sys.argv[1] == "serve":
+                        await service.start_server()
+                    elif sys.argv[1] == "stdio":
+                        print("Starting RAPTOR MCP server in stdio mode...")
+                        await service.run_stdio()
+                    else:
+                        print(
+                            "RAPTOR MCP Service ready. Use 'python raptor_mcp_server.py serve' to start server or 'python raptor_mcp_server.py stdio' for stdio mode."
+                        )
                 else:
                     print(
-                        "RAPTOR MCP Service ready. Use 'python raptor_mcp_server.py serve' to start server."
+                        "RAPTOR MCP Service ready. Use 'python raptor_mcp_server.py serve' to start server or 'python raptor_mcp_server.py stdio' for stdio mode."
                     )
             except Exception as e:
                 print(f"Failed to start standalone MCP service: {e}")

@@ -15,9 +15,9 @@ MCP_IMPORT_SUCCESS = False
 
 # Try to import MCP components
 try:
-    from mcp.raptor_mcp_server import RaptorMCPService
-    from mcp.server.fastmcp import FastMCP
-    from mcp.sse_endpoint import SSEManager
+    from mcp_local.raptor_mcp_server import RaptorMCPService
+    from mcp_local.server.fastmcp import FastMCP
+    from mcp_local.sse_endpoint import SSEManager
 
     MCP_IMPORT_SUCCESS = True
 except ImportError:

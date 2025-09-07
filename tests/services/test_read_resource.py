@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from mcp.tools.resources import read_resource
+from mcp_local.tools.resources import read_resource
 
 
 @pytest.mark.asyncio
