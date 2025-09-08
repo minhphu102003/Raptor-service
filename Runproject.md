@@ -3,11 +3,16 @@
 ### Development
 
 ```bash
-# Run with MCP enabled (default)
 uv run fastapi dev app/main.py
 
-# Run with MCP disabled
-uv run fastapi dev app/main.py --disable-mcp
+```
+
+### Run mcp
+```
+python run_mcp_server.py --mode http --host 127.0.0.1 --port 3333
+
+python run_mcp_server.py --mode stdio
+
 ```
 
 Prod (đơn giản):

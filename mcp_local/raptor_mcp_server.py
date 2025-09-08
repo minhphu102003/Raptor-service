@@ -1,14 +1,13 @@
 import asyncio
-from contextlib import asynccontextmanager
+import json
 import logging
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, cast
-from urllib.parse import quote
+from typing import Any, Dict, List, Optional
 
+from fastmcp import Context, FastMCP
+
+# Import tool implementations
 from .tools.base_tools import create_chat_session as _create_chat_session
 from .tools.base_tools import ingest_document as _ingest_document
-
-# Import tool implementations - modify to pass container to tools
-# We'll import the functions but modify how they're called
 from .tools.base_tools import list_datasets as _list_datasets
 from .tools.document_tools import answer_question as _answer_question
 from .tools.rag_navigation import rag_path_to_root as _rag_path_to_root
@@ -19,77 +18,31 @@ from .tools.rag_retrieve import rag_retrieve as _rag_retrieve
 from .tools.rag_summarize import rag_summarize as _rag_summarize
 from .tools.resources import read_resource as _read_resource
 
-# Import for runtime, but avoid type conflicts
-try:
-    from mcp.server.fastmcp import FastMCP  # type: ignore
-    from mcp.server.session import ServerSession
-    from mcp.server.stdio import stdio_server
-    from mcp.types import Resource, Tool
-
-    MCP_AVAILABLE = True
-except ImportError:
-    MCP_AVAILABLE = False
-    print("MCP not available. Install with: pip install mcp[cli]")
-
-    # Define placeholder class to avoid runtime errors
-    class FastMCP:
-        def __init__(self, name: str, lifespan=None):
-            pass
-
-        def tool(self):
-            def decorator(func):
-                return func
-
-            return decorator
-
-        def resource(self, uri_template=None):
-            def decorator(func):
-                return func
-
-            return decorator
-
-
 logger = logging.getLogger("raptor.mcp.server")
+
+# Create the MCP instance
+mcp = FastMCP("RAPTOR Service")
 
 
 class RaptorMCPService:
     """MCP Service for RAPTOR functionality"""
 
     def __init__(self, container):
-        """Initialize MCP service with required container.
-
-        Args:
-            container: The application container with database sessions
-        """
-        if container is None:
-            raise ValueError("Container is required for RaptorMCPService")
-
+        """Initialize MCP service with required container."""
         self.container = container
-        self.mcp = None
-        if MCP_AVAILABLE:
-            self.mcp = FastMCP("RAPTOR Service", lifespan=self._lifespan)
-            self._register_tools()
-            self._register_resources()
-
-    @asynccontextmanager
-    async def _lifespan(self, server):  # Remove type annotation to avoid issues
-        """Manage MCP server lifecycle"""
-        logger.info("Starting RAPTOR MCP server")
-        try:
-            yield
-        finally:
-            logger.info("Shutting down RAPTOR MCP server")
+        self.mcp = mcp
+        self._register_tools()
 
     def _register_tools(self):
         """Register all RAPTOR tools with the MCP server"""
-        if not self.mcp:
-            return
-
-        # Store container reference for use in tool functions
         container = self.container
 
         # RAG retrieve tool
-        @self.mcp.tool()
+        @self.mcp.tool(
+            name="rag_retrieve",
+            description="Retrieve relevant nodes from a RAPTOR tree based on a query",
+            tags={"rag", "retrieve", "search"},
+        )
         async def rag_retrieve_tool(
             dataset_id: str,
             query: str,
@@ -99,7 +52,6 @@ class RaptorMCPService:
             reranker: Optional[bool] = None,
             score_threshold: Optional[float] = None,
         ) -> Dict[str, Any]:
-            # Pass container to the actual implementation
             return await _rag_retrieve(
                 dataset_id,
                 query,
@@ -111,84 +63,105 @@ class RaptorMCPService:
                 container=container,
             )
 
-        # Node metadata tool
-        @self.mcp.tool()
-        async def rag_node_get_tool(node_id: str) -> Dict[str, Any]:
-            return await _rag_node_get(node_id, container=container)
+        # # Node metadata tool
+        # @self.mcp.tool(
+        #     name="rag_node_get",
+        #     description="Get metadata for a specific RAPTOR node",
+        #     tags={"rag", "node", "metadata"}
+        # )
+        # async def rag_node_get_tool(node_id: str) -> Dict[str, Any]:
+        #     return await _rag_node_get(node_id, container=container)
 
-        # Node children tool
-        @self.mcp.tool()
-        async def rag_node_children_tool(node_id: str) -> Dict[str, Any]:
-            return await _rag_node_children(node_id, container=container)
+        # # Node children tool
+        # @self.mcp.tool(
+        #     name="rag_node_children",
+        #     description="Get children of a specific RAPTOR node",
+        #     tags={"rag", "node", "children"}
+        # )
+        # async def rag_node_children_tool(node_id: str) -> Dict[str, Any]:
+        #     return await _rag_node_children(node_id, container=container)
 
-        # Node parent/siblings tool
-        @self.mcp.tool()
-        async def rag_node_navigation_tool(node_id: str, direction: str) -> Dict[str, Any]:
-            return await _rag_node_navigation(node_id, direction, container=container)
+        # # Node parent/siblings tool
+        # @self.mcp.tool(
+        #     name="rag_node_navigation",
+        #     description="Navigate RAPTOR tree structure (parent, siblings)",
+        #     tags={"rag", "node", "navigation"}
+        # )
+        # async def rag_node_navigation_tool(node_id: str, direction: str) -> Dict[str, Any]:
+        #     return await _rag_node_navigation(node_id, direction, container=container)
 
-        # Path to root tool
-        @self.mcp.tool()
-        async def rag_path_to_root_tool(node_id: str) -> Dict[str, Any]:
-            return await _rag_path_to_root(node_id, container=container)
+        # # Path to root tool
+        # @self.mcp.tool(
+        #     name="rag_path_to_root",
+        #     description="Get path from a node to the root of the RAPTOR tree",
+        #     tags={"rag", "node", "path"}
+        # )
+        # async def rag_path_to_root_tool(node_id: str) -> Dict[str, Any]:
+        #     return await _rag_path_to_root(node_id, container=container)
 
-        # Summarize tool
-        @self.mcp.tool()
-        async def rag_summarize_tool(node_ids: List[str]) -> Dict[str, Any]:
-            return await _rag_summarize(node_ids, container=container)
+        # # Summarize tool
+        # @self.mcp.tool(
+        #     name="rag_summarize",
+        #     description="Generate summary for a set of RAPTOR nodes",
+        #     tags={"rag", "summarize"}
+        # )
+        # async def rag_summarize_tool(node_ids: List[str]) -> Dict[str, Any]:
+        #     return await _rag_summarize(node_ids, container=container)
 
-        # Document ingestion tool (existing)
-        @self.mcp.tool()
-        async def ingest_document_tool(
-            dataset_id: str,
-            file_content: str,
-            source: Optional[str] = None,
-            tags: Optional[List[str]] = None,
-        ) -> Dict[str, Any]:
-            return await _ingest_document(
-                dataset_id, file_content, source, tags, container=container
-            )
+        # # Document ingestion tool
+        # @self.mcp.tool(
+        #     name="ingest_document",
+        #     description="Ingest a document into a RAPTOR dataset",
+        #     tags={"document", "ingest"}
+        # )
+        # async def ingest_document_tool(
+        #     dataset_id: str,
+        #     file_content: str,
+        #     source: Optional[str] = None,
+        #     tags: Optional[List[str]] = None,
+        # ) -> Dict[str, Any]:
+        #     return await _ingest_document(
+        #         dataset_id, file_content, source, tags, container=container
+        #     )
 
-        # Question answering tool (existing)
-        @self.mcp.tool()
-        async def answer_question_tool(
-            dataset_id: str,
-            query: str,
-            mode: str = "collapsed",
-            top_k: int = 5,
-            temperature: float = 0.7,
-        ) -> Dict[str, Any]:
-            return await _answer_question(
-                dataset_id, query, mode, top_k, temperature, container=container
-            )
+        # # Question answering tool
+        # @self.mcp.tool(
+        #     name="answer_question",
+        #     description="Answer a question using RAPTOR tree retrieval",
+        #     tags={"rag", "question", "answer"}
+        # )
+        # async def answer_question_tool(
+        #     dataset_id: str,
+        #     query: str,
+        #     mode: str = "collapsed",
+        #     top_k: int = 5,
+        #     temperature: float = 0.7,
+        # ) -> Dict[str, Any]:
+        #     return await _answer_question(
+        #         dataset_id, query, mode, top_k, temperature, container=container
+        #     )
 
-        # Dataset management tool (existing)
-        @self.mcp.tool()
-        async def list_datasets_tool() -> Dict[str, Any]:
-            return await _list_datasets(container=container)
+        # # Dataset management tool
+        # @self.mcp.tool(
+        #     name="list_datasets",
+        #     description="List all available RAPTOR datasets",
+        #     tags={"dataset", "list"}
+        # )
+        # async def list_datasets_tool() -> Dict[str, Any]:
+        #     return await _list_datasets(container=container)
 
-        # Chat session tool (existing)
-        @self.mcp.tool()
-        async def create_chat_session_tool(
-            dataset_id: str, title: str = "New Chat Session"
-        ) -> Dict[str, Any]:
-            return await _create_chat_session(dataset_id, title, container=container)
+        # # Chat session tool
+        # @self.mcp.tool(
+        #     name="create_chat_session",
+        #     description="Create a new chat session for a dataset",
+        #     tags={"chat", "session"}
+        # )
+        # async def create_chat_session_tool(
+        #     dataset_id: str, title: str = "New Chat Session"
+        # ) -> Dict[str, Any]:
+        #     return await _create_chat_session(dataset_id, title, container=container)
 
-        logger.info("Registered RAPTOR MCP tools")
-
-    def _register_resources(self):
-        """Register all RAPTOR resources with the MCP server"""
-        if not self.mcp:
-            return
-
-        # Store container reference for use in resource functions
-        container = self.container
-
-        # Resource reading handler
-        @self.mcp.resource("raptor://{dataset_id}/nodes/{node_id}")
-        async def read_resource_tool(dataset_id: str, node_id: str) -> Dict[str, Any]:
-            # Construct the URI from the parameters
-            uri = f"raptor://{dataset_id}/nodes/{node_id}"
-            return await _read_resource(uri, container=container)
+        # logger.info("Registered RAPTOR MCP tools")
 
     def get_mcp_server(self):
         """Get the MCP server instance"""
@@ -196,81 +169,36 @@ class RaptorMCPService:
 
     def mount_to_fastapi(self, app, path: str = "/mcp"):
         """Mount the MCP server to a FastAPI application"""
-        if not self.mcp:
-            raise RuntimeError("MCP not available. Install with: pip install mcp[cli]")
-
-        # Mount the MCP server using the correct method
-        app.mount(path, self.mcp.streamable_http_app())
+        app.mount(path, self.mcp.http_app())
         logger.info(f"MCP server mounted to {path}")
 
     async def start_server(self, host: str = "127.0.0.1", port: int = 3333):
-        """
-        Start the MCP server.
+        """Start the MCP server"""
+        from fastapi import FastAPI
+        import uvicorn
 
-        Args:
-            host: Host to bind to
-            port: Port to listen on
-        """
-        if not self.mcp:
-            raise RuntimeError("MCP not available. Install with: pip install mcp[cli]")
+        app = FastAPI()
+        app.mount("/mcp", self.mcp.http_app())
+        logger.info("MCP server mounted to /mcp")
 
-        try:
-            from fastapi import FastAPI
-            import uvicorn
-
-            # Create a FastAPI app and mount the MCP server correctly
-            app = FastAPI()
-
-            # Mount the MCP server using the correct path
-            app.mount("/mcp", self.mcp.streamable_http_app())
-            logger.info("MCP server mounted to /mcp")
-
-            logger.info(f"Starting RAPTOR MCP server on {host}:{port}")
-            config = uvicorn.Config(app, host=host, port=port, log_level="info")
-            server = uvicorn.Server(config)
-            await server.serve()
-        except ImportError:
-            logger.error("uvicorn not available for MCP server")
-            raise
-        except Exception as e:
-            logger.error(f"Error starting MCP server: {e}")
-            raise
+        logger.info(f"Starting RAPTOR MCP server on {host}:{port}")
+        config = uvicorn.Config(app, host=host, port=port, log_level="info")
+        server = uvicorn.Server(config)
+        await server.serve()
 
     async def run_stdio(self):
-        """
-        Run the MCP server over stdio for local usage.
-        This allows the server to communicate through standard input/output.
-        """
-        if not self.mcp:
-            raise RuntimeError("MCP not available. Install with: pip install mcp[cli]")
-
-        # Check if stdio_server is available (it might not be if MCP is not properly installed)
-        try:
-            from mcp.server.stdio import stdio_server
-        except ImportError:
-            raise RuntimeError("MCP stdio_server not available. Install with: pip install mcp[cli]")
-
-        # Run the server over stdio
-        async with stdio_server() as (read_stream, write_stream):
-            await self.mcp.run(
-                read_stream,
-                write_stream,
-                app_done=asyncio.Future(),  # Create a future that never completes for continuous operation
-            )
+        """Run the MCP server over stdio"""
+        await self.mcp.run(transport="stdio")
 
 
-# For standalone usage, we need to provide a way to create the service
-# with a proper container that has database connectivity
+def initialize_mcp_with_container(container):
+    """Initialize MCP tools with container for database connectivity"""
+    service = RaptorMCPService(container)
+    return service.mcp
+
+
 def create_standalone_mcp_service(db_dsn: Optional[str] = None, vector_dsn: Optional[str] = None):
-    """Create an MCP service for standalone usage with a proper container.
-
-    Args:
-        db_dsn: Database connection string for ORM operations
-        vector_dsn: Database connection string for vector operations
-
-    Returns:
-        RaptorMCPService: Initialized MCP service with proper container
-    """
+    """Create an MCP service for standalone usage with a proper container."""
     try:
         # Import required components
         from app.config import settings
@@ -288,46 +216,39 @@ def create_standalone_mcp_service(db_dsn: Optional[str] = None, vector_dsn: Opti
         # Create a proper container with database connectivity
         container = Container(orm_async_dsn=orm_dsn, vector_dsn=vec_dsn)
 
-        # Create the MCP service with the proper container
-        return RaptorMCPService(container=container)
+        # Initialize MCP with the container
+        mcp_instance = initialize_mcp_with_container(container)
+
+        return mcp_instance
 
     except Exception as e:
         logger.error(f"Failed to create standalone MCP service with proper container: {e}")
         raise
 
 
-# For backward compatibility, we still create a global instance but only when needed
-# This global instance is only for backward compatibility and should not be used in the FastAPI app
-raptor_mcp_service = None
-
-
 if __name__ == "__main__":
-    # Example of how to run the MCP server standalone
-    if MCP_AVAILABLE:
-        import asyncio
-        import sys
+    import argparse
+    import sys
 
-        async def main():
-            try:
-                # Create service with proper container for standalone usage
-                service = create_standalone_mcp_service()
-                if len(sys.argv) > 1:
-                    if sys.argv[1] == "serve":
-                        await service.start_server()
-                    elif sys.argv[1] == "stdio":
-                        print("Starting RAPTOR MCP server in stdio mode...")
-                        await service.run_stdio()
-                    else:
-                        print(
-                            "RAPTOR MCP Service ready. Use 'python raptor_mcp_server.py serve' to start server or 'python raptor_mcp_server.py stdio' for stdio mode."
-                        )
-                else:
-                    print(
-                        "RAPTOR MCP Service ready. Use 'python raptor_mcp_server.py serve' to start server or 'python raptor_mcp_server.py stdio' for stdio mode."
-                    )
-            except Exception as e:
-                print(f"Failed to start standalone MCP service: {e}")
+    # Set the event loop policy for Windows compatibility with psycopg
+    if sys.platform == "win32":
+        from asyncio import WindowsSelectorEventLoopPolicy
 
-        asyncio.run(main())
+        asyncio.set_event_loop_policy(WindowsSelectorEventLoopPolicy())
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--mode", choices=["stdio", "http"], default="stdio")
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=3333)
+    parser.add_argument("--path", default="/mcp")
+    args = parser.parse_args()
+
+    # Create service with proper container for standalone usage
+    mcp_instance = create_standalone_mcp_service()
+
+    if args.mode == "stdio":
+        print("Starting RAPTOR MCP server in stdio mode...")
+        mcp_instance.run(transport="stdio")
     else:
-        print("MCP not available. Install with: pip install mcp[cli]")
+        print(f"Starting RAPTOR MCP server on {args.host}:{args.port}...")
+        mcp_instance.run(transport="http", host=args.host, port=args.port, path=args.path)

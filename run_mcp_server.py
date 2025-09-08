@@ -4,9 +4,16 @@ Standalone MCP Server for RAPTOR Service
 This script runs an independent MCP server with pre-attached RAPTOR tools.
 """
 
+import argparse
 import asyncio
 import os
 import sys
+
+# Set the event loop policy for Windows compatibility with psycopg
+if sys.platform == "win32":
+    from asyncio import WindowsSelectorEventLoopPolicy
+
+    asyncio.set_event_loop_policy(WindowsSelectorEventLoopPolicy())
 
 # Add the project root to the Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -33,44 +40,33 @@ def main():
     print(f"Database DSN: {orm_dsn}")
     print(f"Vector DSN: {vector_dsn}")
 
-    async def async_main():
-        try:
-            # Create service with proper container for standalone usage
-            service = create_standalone_mcp_service(db_dsn=orm_dsn, vector_dsn=vector_dsn)
+    # Parse command line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--mode", choices=["stdio", "http"], default="stdio")
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=3333)
+    parser.add_argument("--path", default="/mcp")
+    args = parser.parse_args()
 
-            # Check if MCP is available
-            from mcp.server.fastmcp import FastMCP
+    try:
+        # Create service with proper container for standalone usage
+        mcp_instance = create_standalone_mcp_service(db_dsn=orm_dsn, vector_dsn=vector_dsn)
 
-            print("MCP library is available")
+        print("RAPTOR MCP Service ready.")
 
-            if len(sys.argv) > 1:
-                if sys.argv[1] == "serve":
-                    print("Starting RAPTOR MCP server on 127.0.0.1:3333...")
-                    # Start the server
-                    try:
-                        await service.start_server()
-                    except Exception as e:
-                        print(f"Error starting server: {e}")
-                elif sys.argv[1] == "stdio":
-                    print("Starting RAPTOR MCP server in stdio mode...")
-                    await service.run_stdio()
-                else:
-                    print(
-                        "RAPTOR MCP Service ready. Use 'python run_mcp_server.py serve' to start server or 'python run_mcp_server.py stdio' for stdio mode."
-                    )
-            else:
-                print(
-                    "RAPTOR MCP Service ready. Use 'python run_mcp_server.py serve' to start server or 'python run_mcp_server.py stdio' for stdio mode."
-                )
+        if args.mode == "stdio":
+            print("Starting RAPTOR MCP server in stdio mode...")
+            mcp_instance.run(transport="stdio")
+        else:
+            print(f"Starting RAPTOR MCP server on {args.host}:{args.port}...")
+            mcp_instance.run(transport="http", host=args.host, port=args.port, path=args.path)
 
-        except Exception as e:
-            print(f"Failed to start standalone MCP service: {e}")
-            import traceback
+    except Exception as e:
+        print(f"Failed to start standalone MCP service: {e}")
+        import traceback
 
-            traceback.print_exc()
-            sys.exit(1)
-
-    asyncio.run(async_main())
+        traceback.print_exc()
+        sys.exit(1)
 
 
 if __name__ == "__main__":
