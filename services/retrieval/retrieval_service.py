@@ -50,16 +50,16 @@ class RetrievalService:
         # Trace logging for embedding generation
         t = time.perf_counter()
         logger.debug(f"Starting embedding generation for query: {q_norm}")
-        q_vec = await self.embed.embed_query(
-            q_norm, byok_voyage_key=body.byok_voyage_api_key, dim=1024
-        )
+        q_vec_result = await self.embed.embed_queries([q_norm])
+        # Extract the first (and only) embedding from the result
+        q_vec = q_vec_result[0] if q_vec_result else []
         logger.debug(f"Embedding generation completed. Vector dimension: {len(q_vec)}")
         logger.info(
             "embed.done",
             extra={
                 "span": "embed",
                 "ms": _ms_since(t),
-                "extra": {"dim": len(q_vec)},
+                "extra": {"dim": len(q_vec) if q_vec else 0},
                 **base_extra,
             },
         )
