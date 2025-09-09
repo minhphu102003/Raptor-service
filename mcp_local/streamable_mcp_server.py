@@ -12,6 +12,7 @@ import mcp.types as types
 from starlette.routing import BaseRoute, Route
 import uvicorn
 
+from .middleware import log_all_requests
 from .tools.base_tools import create_chat_session as _create_chat_session
 from .tools.base_tools import ingest_document as _ingest_document
 from .tools.base_tools import list_datasets as _list_datasets
@@ -61,40 +62,6 @@ class StreamableMCPService:
                         "required": ["dataset_id", "query"],
                     },
                 ),
-                # types.Tool(
-                #     name="list_datasets",
-                #     description="List all available RAPTOR datasets with detailed information including document counts, processing status, and statistics",
-                #     inputSchema={
-                #         "type": "object",
-                #         "properties": {}
-                #     },
-                #     outputSchema={
-                #         "type": "array",
-                #         "items": {
-                #             "type": "object",
-                #             "properties": {
-                #                 "id": {"type": "string", "description": "Unique identifier for the dataset"},
-                #                 "name": {"type": "string", "description": "Human-readable name of the dataset"},
-                #                 "description": {"type": "string", "description": "Description of the dataset content"},
-                #                 "document_count": {"type": "integer", "description": "Number of documents in the dataset"},
-                #                 "chunk_count": {"type": "integer", "description": "Total number of chunks across all documents"},
-                #                 "embedding_count": {"type": "integer", "description": "Number of embeddings generated"},
-                #                 "tree_count": {"type": "integer", "description": "Number of RAPTOR trees built"},
-                #                 "created_at": {"type": "string", "format": "date-time", "description": "When the dataset was created"},
-                #                 "last_updated": {"type": "string", "format": "date-time", "description": "When the dataset was last modified"},
-                #                 "status": {"type": "string", "description": "Current status of the dataset"},
-                #                 "total_tokens": {"type": "integer", "description": "Total number of tokens in the dataset"},
-                #                 "embedding_models": {
-                #                     "type": "array",
-                #                     "items": {"type": "string"},
-                #                     "description": "List of embedding models used"
-                #                 },
-                #                 "processing_status": {"type": "string", "description": "Current processing status"}
-                #             },
-                #             "required": ["id", "name", "description", "document_count", "created_at", "last_updated", "status"]
-                #         }
-                #     }
-                # ),
                 # Add other tools as needed
             ]
 
@@ -103,7 +70,13 @@ class StreamableMCPService:
             name: str, arguments: Dict[str, Any]
         ) -> Sequence[types.TextContent | types.ImageContent | types.EmbeddedResource]:
             try:
+                logger.info(f"Call tool requested: {name}")
+                logger.info(f"Arguments received: {arguments}")
+
                 if name == "rag_retrieve":
+                    # Log the specific arguments being passed to rag_retrieve
+                    logger.info(f"rag_retrieve arguments: {arguments}")
+
                     result = await _rag_retrieve(
                         arguments["dataset_id"],
                         arguments["query"],
@@ -190,23 +163,6 @@ class StreamableMCPService:
                 }
             )
 
-    async def log_all_requests(self, request: Request, call_next):
-        """Middleware to log all incoming requests"""
-        logger.info(f"Incoming request: {request.method} {request.url}")
-        logger.info(f"Request headers: {dict(request.headers)}")
-
-        # Log request body for POST requests
-        if request.method == "POST":
-            try:
-                body = await request.body()
-                logger.info(f"Request body: {body.decode()}")
-            except Exception as e:
-                logger.info(f"Could not read request body: {e}")
-
-        response = await call_next(request)
-        logger.info(f"Response status: {response.status_code}")
-        return response
-
     def mount_to_fastapi(self, app, path: str = "/mcp"):
         """Mount the streamable MCP server to a FastAPI application"""
 
@@ -233,7 +189,7 @@ class StreamableMCPService:
 
         # Create a FastAPI app with just these routes
         mcp_app = FastAPI(routes=routes)
-        mcp_app.middleware("http")(self.log_all_requests)
+        mcp_app.middleware("http")(log_all_requests)
         app.mount(path, mcp_app)
         logger.info(f"Streamable MCP server mounted to {path}")
 
@@ -276,7 +232,7 @@ class StreamableMCPService:
         ]
 
         app = FastAPI(routes=routes)
-        app.middleware("http")(self.log_all_requests)
+        app.middleware("http")(log_all_requests)
 
         logger.info(f"Starting Streamable RAPTOR MCP server on {host}:{port}")
         logger.info("Available endpoints:")

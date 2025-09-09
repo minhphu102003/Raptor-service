@@ -3,7 +3,7 @@ from statistics import median
 import time
 from typing import Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationInfo, field_validator
 
 logger = logging.getLogger("raptor.retrieve")
 
@@ -23,6 +23,14 @@ class RetrieveBody(BaseModel):
     reranker_model: Optional[str] = None
     byok_voyage_api_key: Optional[str] = None
 
+    # Add validation logging
+    @field_validator("*")
+    @classmethod
+    def log_validation(cls, v, info: ValidationInfo):
+        # This will log each field during validation
+        logger.info(f"Validating field {info.field_name}: {v} (type: {type(v)})")
+        return v
+
 
 class RetrievalService:
     def __init__(self, embed_svc, reranker_svc=None):
@@ -30,6 +38,7 @@ class RetrievalService:
         self.reranker = reranker_svc
 
     async def retrieve(self, body: RetrieveBody, *, repo) -> dict:
+        logger.info(f"RetrievalService.retrieve called with body: {body.dict()}")
         t_total = time.perf_counter()
         base_extra = {
             "dataset": body.dataset_id,

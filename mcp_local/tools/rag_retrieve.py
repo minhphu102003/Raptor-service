@@ -39,6 +39,10 @@ async def rag_retrieve(
     """
     try:
         logger.info(f"Retrieving documents from dataset {dataset_id} for query: {query}")
+        # Log the actual values being passed to the function
+        logger.info(
+            f"Function arguments - top_k: {top_k}, levels_cap: {levels_cap}, expand_k: {expand_k}, reranker: {reranker}, score_threshold: {score_threshold}"
+        )
 
         if container is None:
             raise ValueError("Container is required for database access")
@@ -48,16 +52,17 @@ async def rag_retrieve(
         voyage_client = VoyageEmbeddingClientAsync(model="voyage-context-3", out_dim=1024)
         retrieval_svc = RetrievalService(embed_svc=voyage_client)
 
-        # Create the retrieval body
+        # Create the retrieval body with proper handling of None values
         retrieve_body = RetrieveBody(
             dataset_id=dataset_id,
             query=query,
             mode="collapsed" if expand_k is not None else "traversal",
-            top_k=top_k,
-            expand_k=expand_k or 5,
-            levels_cap=levels_cap or 0,
-            use_reranker=reranker or False,
+            top_k=top_k if top_k is not None else 5,
+            expand_k=expand_k if expand_k is not None else 5,
+            levels_cap=levels_cap if levels_cap is not None else 0,
+            use_reranker=reranker if reranker is not None else False,
         )
+        logger.info(f"Created RetrieveBody with values: {retrieve_body.dict()}")
 
         # Use container to access database
         uow = container.make_uow()
@@ -94,6 +99,7 @@ async def rag_retrieve(
             return {"content": results, "isError": False}
     except Exception as e:
         logger.error(f"Failed to retrieve documents: {e}")
+        logger.exception("Full traceback for retrieve documents error")
         return {
             "content": [{"type": "text", "text": f"Failed to retrieve documents: {str(e)}"}],
             "isError": True,
