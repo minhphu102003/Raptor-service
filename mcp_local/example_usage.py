@@ -9,6 +9,7 @@ import asyncio
 from fastapi import FastAPI
 
 from mcp_local.raptor_mcp_server import RaptorMCPService, create_standalone_mcp_service
+from mcp_local.streamable_mcp_server import StreamableMCPService, create_streamable_mcp_service
 
 
 # Example 1: Integration with FastAPI application
@@ -91,10 +92,29 @@ async def run_mcp_server():
         print("RAPTOR MCP Service ready. Connect your AI assistant to use the tools.")
 
         # In a real implementation, you would start the server here
-        # await service.start_server()
+        # await service.run_stdio()
 
     except Exception as e:
         print(f"Failed to start standalone MCP service: {e}")
+
+
+# Example 5: Running the Streamable MCP server
+async def run_streamable_mcp_server():
+    """
+    Example of how to run the Streamable MCP server standalone.
+    """
+    try:
+        # Create streamable service
+        service = create_streamable_mcp_service()
+
+        print("Starting Streamable RAPTOR MCP server...")
+        print("Streamable RAPTOR MCP Service ready. Connect your AI assistant to use the tools.")
+
+        # In a real implementation, you would start the server here
+        # await service.start_server()
+
+    except Exception as e:
+        print(f"Failed to start streamable MCP service: {e}")
 
 
 if __name__ == "__main__":
@@ -121,3 +141,9 @@ if __name__ == "__main__":
     # Example 4
     print("Example 4: Running the MCP server")
     asyncio.run(run_mcp_server())
+
+    print("\n" + "=" * 40)
+
+    # Example 5
+    print("Example 5: Running the Streamable MCP server")
+    asyncio.run(run_streamable_mcp_server())

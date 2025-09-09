@@ -6,6 +6,7 @@ This script runs an independent MCP server with pre-attached RAPTOR tools.
 
 import argparse
 import asyncio
+import logging
 import os
 import sys
 
@@ -18,9 +19,19 @@ if sys.platform == "win32":
 # Add the project root to the Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Set up logging
+from app.logging_config import setup_logging
+
+setup_logging()
+
+# Configure logging for MCP
+logging.getLogger("raptor.mcp").setLevel(logging.DEBUG)
+logging.getLogger("raptor.mcp.streamable").setLevel(logging.DEBUG)
+
 # Use absolute imports to avoid naming conflicts
 from app.config import settings
 from mcp_local.raptor_mcp_server import create_standalone_mcp_service
+from mcp_local.streamable_mcp_server import create_streamable_mcp_service, run_streamable_server
 
 
 def main():
@@ -50,16 +61,31 @@ def main():
 
     try:
         # Create service with proper container for standalone usage
-        mcp_instance = create_standalone_mcp_service(db_dsn=orm_dsn, vector_dsn=vector_dsn)
+        mcp_service = create_standalone_mcp_service(db_dsn=orm_dsn, vector_dsn=vector_dsn)
 
         print("RAPTOR MCP Service ready.")
 
         if args.mode == "stdio":
             print("Starting RAPTOR MCP server in stdio mode...")
-            mcp_instance.run(transport="stdio")
+            asyncio.run(mcp_service.run_stdio())
         else:
             print(f"Starting RAPTOR MCP server on {args.host}:{args.port}...")
-            mcp_instance.run(transport="http", host=args.host, port=args.port, path=args.path)
+            print(
+                "According to MCP specification, the server provides a single endpoint that supports both GET and POST:"
+            )
+            print(
+                f"  GET/POST http://{args.host}:{args.port}/mcp (Main MCP endpoint according to spec)"
+            )
+            print("")
+            print("Legacy endpoints (for backward compatibility):")
+            print(f"  GET  http://{args.host}:{args.port}/mcp/sse")
+            print(f"  POST http://{args.host}:{args.port}/mcp/messages/")
+            print("")
+            print(f"  GET  http://{args.host}:{args.port}/health")
+            print(f"  GET  http://{args.host}:{args.port}/routes")
+            # Pass the container to the streamable server
+            streamable_service = create_streamable_mcp_service(container=mcp_service.container)
+            asyncio.run(streamable_service.start_server(args.host, args.port))
 
     except Exception as e:
         print(f"Failed to start standalone MCP service: {e}")

@@ -1,9 +1,12 @@
 import asyncio
+from contextlib import asynccontextmanager
 import json
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, AsyncIterator, Dict, List, Optional
 
-from fastmcp import Context, FastMCP
+from mcp.server import Server
+from mcp.server.stdio import stdio_server
+import mcp.types as types
 
 # Import tool implementations
 from .tools.base_tools import create_chat_session as _create_chat_session
@@ -20,181 +23,164 @@ from .tools.resources import read_resource as _read_resource
 
 logger = logging.getLogger("raptor.mcp.server")
 
-# Create the MCP instance
-mcp = FastMCP("RAPTOR Service")
-
 
 class RaptorMCPService:
-    """MCP Service for RAPTOR functionality"""
+    """MCP Service for RAPTOR functionality using standard MCP library"""
 
     def __init__(self, container):
         """Initialize MCP service with required container."""
         self.container = container
-        self.mcp = mcp
-        self._register_tools()
+        self.mcp_server = self._create_mcp_server()
 
-    def _register_tools(self):
-        """Register all RAPTOR tools with the MCP server"""
-        container = self.container
+    def _create_mcp_server(self) -> Server:
+        """Create a standard MCP server with all RAPTOR tools"""
+        server = Server("RAPTOR Service")
 
-        # RAG retrieve tool
-        @self.mcp.tool(
-            name="rag_retrieve",
-            description="Retrieve relevant nodes from a RAPTOR tree based on a query",
-            tags={"rag", "retrieve", "search"},
-        )
-        async def rag_retrieve_tool(
-            dataset_id: str,
-            query: str,
-            top_k: int = 5,
-            levels_cap: Optional[int] = None,
-            expand_k: Optional[int] = None,
-            reranker: Optional[bool] = None,
-            score_threshold: Optional[float] = None,
-        ) -> Dict[str, Any]:
-            return await _rag_retrieve(
-                dataset_id,
-                query,
-                top_k,
-                levels_cap,
-                expand_k,
-                reranker,
-                score_threshold,
-                container=container,
-            )
+        # Register tools with the server
+        @server.list_tools()
+        async def list_tools() -> List[types.Tool]:
+            return [
+                types.Tool(
+                    name="rag_retrieve",
+                    description="Retrieve relevant nodes from a RAPTOR tree based on a query",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "dataset_id": {"type": "string"},
+                            "query": {"type": "string"},
+                            "top_k": {"type": "integer", "default": 5},
+                            "levels_cap": {"type": "integer"},
+                            "expand_k": {"type": "integer"},
+                            "reranker": {"type": "boolean"},
+                            "score_threshold": {"type": "number"},
+                        },
+                        "required": ["dataset_id", "query"],
+                    },
+                ),
+                types.Tool(
+                    name="list_datasets",
+                    description="List all available RAPTOR datasets with detailed information including document counts, processing status, and statistics",
+                    inputSchema={"type": "object", "properties": {}},
+                    outputSchema={
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "string",
+                                    "description": "Unique identifier for the dataset",
+                                },
+                                "name": {
+                                    "type": "string",
+                                    "description": "Human-readable name of the dataset",
+                                },
+                                "description": {
+                                    "type": "string",
+                                    "description": "Description of the dataset content",
+                                },
+                                "document_count": {
+                                    "type": "integer",
+                                    "description": "Number of documents in the dataset",
+                                },
+                                "chunk_count": {
+                                    "type": "integer",
+                                    "description": "Total number of chunks across all documents",
+                                },
+                                "embedding_count": {
+                                    "type": "integer",
+                                    "description": "Number of embeddings generated",
+                                },
+                                "tree_count": {
+                                    "type": "integer",
+                                    "description": "Number of RAPTOR trees built",
+                                },
+                                "created_at": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "description": "When the dataset was created",
+                                },
+                                "last_updated": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "description": "When the dataset was last modified",
+                                },
+                                "status": {
+                                    "type": "string",
+                                    "description": "Current status of the dataset",
+                                },
+                                "total_tokens": {
+                                    "type": "integer",
+                                    "description": "Total number of tokens in the dataset",
+                                },
+                                "embedding_models": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                    "description": "List of embedding models used",
+                                },
+                                "processing_status": {
+                                    "type": "string",
+                                    "description": "Current processing status",
+                                },
+                            },
+                            "required": [
+                                "id",
+                                "name",
+                                "description",
+                                "document_count",
+                                "created_at",
+                                "last_updated",
+                                "status",
+                            ],
+                        },
+                    },
+                ),
+                # Add other tools as needed
+            ]
 
-        # # Node metadata tool
-        # @self.mcp.tool(
-        #     name="rag_node_get",
-        #     description="Get metadata for a specific RAPTOR node",
-        #     tags={"rag", "node", "metadata"}
-        # )
-        # async def rag_node_get_tool(node_id: str) -> Dict[str, Any]:
-        #     return await _rag_node_get(node_id, container=container)
+        @server.call_tool()
+        async def call_tool(name: str, arguments: Dict[str, Any]) -> List[types.TextContent]:
+            try:
+                if name == "rag_retrieve":
+                    result = await _rag_retrieve(
+                        arguments["dataset_id"],
+                        arguments["query"],
+                        arguments.get("top_k", 5),
+                        arguments.get("levels_cap"),
+                        arguments.get("expand_k"),
+                        arguments.get("reranker"),
+                        arguments.get("score_threshold"),
+                        container=self.container,
+                    )
+                    return [types.TextContent(type="text", text=str(result))]
 
-        # # Node children tool
-        # @self.mcp.tool(
-        #     name="rag_node_children",
-        #     description="Get children of a specific RAPTOR node",
-        #     tags={"rag", "node", "children"}
-        # )
-        # async def rag_node_children_tool(node_id: str) -> Dict[str, Any]:
-        #     return await _rag_node_children(node_id, container=container)
+                elif name == "list_datasets":
+                    result = await _list_datasets(container=self.container)
+                    return [types.TextContent(type="text", text=str(result))]
 
-        # # Node parent/siblings tool
-        # @self.mcp.tool(
-        #     name="rag_node_navigation",
-        #     description="Navigate RAPTOR tree structure (parent, siblings)",
-        #     tags={"rag", "node", "navigation"}
-        # )
-        # async def rag_node_navigation_tool(node_id: str, direction: str) -> Dict[str, Any]:
-        #     return await _rag_node_navigation(node_id, direction, container=container)
+                # Add other tool implementations as needed
+                else:
+                    raise ValueError(f"Unknown tool: {name}")
+            except Exception as e:
+                return [types.TextContent(type="text", text=f"Error: {str(e)}")]
 
-        # # Path to root tool
-        # @self.mcp.tool(
-        #     name="rag_path_to_root",
-        #     description="Get path from a node to the root of the RAPTOR tree",
-        #     tags={"rag", "node", "path"}
-        # )
-        # async def rag_path_to_root_tool(node_id: str) -> Dict[str, Any]:
-        #     return await _rag_path_to_root(node_id, container=container)
-
-        # # Summarize tool
-        # @self.mcp.tool(
-        #     name="rag_summarize",
-        #     description="Generate summary for a set of RAPTOR nodes",
-        #     tags={"rag", "summarize"}
-        # )
-        # async def rag_summarize_tool(node_ids: List[str]) -> Dict[str, Any]:
-        #     return await _rag_summarize(node_ids, container=container)
-
-        # # Document ingestion tool
-        # @self.mcp.tool(
-        #     name="ingest_document",
-        #     description="Ingest a document into a RAPTOR dataset",
-        #     tags={"document", "ingest"}
-        # )
-        # async def ingest_document_tool(
-        #     dataset_id: str,
-        #     file_content: str,
-        #     source: Optional[str] = None,
-        #     tags: Optional[List[str]] = None,
-        # ) -> Dict[str, Any]:
-        #     return await _ingest_document(
-        #         dataset_id, file_content, source, tags, container=container
-        #     )
-
-        # # Question answering tool
-        # @self.mcp.tool(
-        #     name="answer_question",
-        #     description="Answer a question using RAPTOR tree retrieval",
-        #     tags={"rag", "question", "answer"}
-        # )
-        # async def answer_question_tool(
-        #     dataset_id: str,
-        #     query: str,
-        #     mode: str = "collapsed",
-        #     top_k: int = 5,
-        #     temperature: float = 0.7,
-        # ) -> Dict[str, Any]:
-        #     return await _answer_question(
-        #         dataset_id, query, mode, top_k, temperature, container=container
-        #     )
-
-        # # Dataset management tool
-        # @self.mcp.tool(
-        #     name="list_datasets",
-        #     description="List all available RAPTOR datasets",
-        #     tags={"dataset", "list"}
-        # )
-        # async def list_datasets_tool() -> Dict[str, Any]:
-        #     return await _list_datasets(container=container)
-
-        # # Chat session tool
-        # @self.mcp.tool(
-        #     name="create_chat_session",
-        #     description="Create a new chat session for a dataset",
-        #     tags={"chat", "session"}
-        # )
-        # async def create_chat_session_tool(
-        #     dataset_id: str, title: str = "New Chat Session"
-        # ) -> Dict[str, Any]:
-        #     return await _create_chat_session(dataset_id, title, container=container)
-
-        # logger.info("Registered RAPTOR MCP tools")
+        return server
 
     def get_mcp_server(self):
         """Get the MCP server instance"""
-        return self.mcp
-
-    def mount_to_fastapi(self, app, path: str = "/mcp"):
-        """Mount the MCP server to a FastAPI application"""
-        app.mount(path, self.mcp.http_app())
-        logger.info(f"MCP server mounted to {path}")
-
-    async def start_server(self, host: str = "127.0.0.1", port: int = 3333):
-        """Start the MCP server"""
-        from fastapi import FastAPI
-        import uvicorn
-
-        app = FastAPI()
-        app.mount("/mcp", self.mcp.http_app())
-        logger.info("MCP server mounted to /mcp")
-
-        logger.info(f"Starting RAPTOR MCP server on {host}:{port}")
-        config = uvicorn.Config(app, host=host, port=port, log_level="info")
-        server = uvicorn.Server(config)
-        await server.serve()
+        return self.mcp_server
 
     async def run_stdio(self):
         """Run the MCP server over stdio"""
-        await self.mcp.run(transport="stdio")
+        async with stdio_server() as (read_stream, write_stream):
+            await self.mcp_server.run(
+                read_stream, write_stream, self.mcp_server.create_initialization_options()
+            )
 
 
 def initialize_mcp_with_container(container):
     """Initialize MCP tools with container for database connectivity"""
     service = RaptorMCPService(container)
-    return service.mcp
+    return service
 
 
 def create_standalone_mcp_service(db_dsn: Optional[str] = None, vector_dsn: Optional[str] = None):
@@ -248,7 +234,10 @@ if __name__ == "__main__":
 
     if args.mode == "stdio":
         print("Starting RAPTOR MCP server in stdio mode...")
-        mcp_instance.run(transport="stdio")
+        asyncio.run(mcp_instance.run_stdio())
     else:
         print(f"Starting RAPTOR MCP server on {args.host}:{args.port}...")
-        mcp_instance.run(transport="http", host=args.host, port=args.port, path=args.path)
+        # For HTTP mode, we now use the streamable version
+        from .streamable_mcp_server import run_streamable_server
+
+        asyncio.run(run_streamable_server(args.host, args.port))
