@@ -4,6 +4,7 @@ This module contains the base tool implementations that were previously in rapto
 """
 
 import asyncio
+import json
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -70,13 +71,13 @@ async def create_chat_session(
 
 async def list_datasets(container=None) -> Dict[str, Any]:
     """
-    List all available datasets.
+    List all available datasets with detailed information.
 
     Args:
         container: The application container with database sessions
 
     Returns:
-        Dictionary with list of datasets
+        Dictionary with list of datasets including detailed metadata
     """
     try:
         logger.info("Listing available datasets")
@@ -91,8 +92,22 @@ async def list_datasets(container=None) -> Dict[str, Any]:
                 # Get real datasets from database
                 datasets = await dataset_repo.list_datasets()
 
+                # Enrich with detailed information
+                enriched_datasets = []
+                for dataset in datasets:
+                    # Get detailed info for each dataset
+                    detailed_info = await dataset_repo.get_dataset_info(dataset["id"])
+                    if detailed_info:
+                        # Merge basic and detailed info
+                        enriched_dataset = {**dataset, **detailed_info}
+                        enriched_datasets.append(enriched_dataset)
+                    else:
+                        enriched_datasets.append(dataset)
+
                 return {
-                    "content": [{"type": "text", "text": f"Available datasets: {datasets}"}],
+                    "content": [
+                        {"type": "text", "text": json.dumps(enriched_datasets, default=str)}
+                    ],
                     "isError": False,
                 }
         else:
@@ -105,19 +120,35 @@ async def list_datasets(container=None) -> Dict[str, Any]:
                     "name": "Demo Dataset",
                     "description": "Sample dataset for demonstration",
                     "document_count": 5,
+                    "chunk_count": 42,
+                    "embedding_count": 42,
+                    "tree_count": 3,
                     "created_at": "2023-01-01T00:00:00Z",
+                    "last_updated": "2023-01-15T10:30:00Z",
+                    "status": "active",
+                    "total_tokens": 12500,
+                    "embedding_models": ["voyage-context-3"],
+                    "processing_status": "completed",
                 },
                 {
                     "id": "ds_docs",
                     "name": "Documentation",
                     "description": "Technical documentation dataset",
                     "document_count": 12,
+                    "chunk_count": 87,
+                    "embedding_count": 87,
+                    "tree_count": 5,
                     "created_at": "2023-01-02T00:00:00Z",
+                    "last_updated": "2023-01-20T14:22:00Z",
+                    "status": "active",
+                    "total_tokens": 35600,
+                    "embedding_models": ["voyage-context-3"],
+                    "processing_status": "completed",
                 },
             ]
 
             return {
-                "content": [{"type": "text", "text": f"Available datasets: {datasets}"}],
+                "content": [{"type": "text", "text": json.dumps(datasets, default=str)}],
                 "isError": False,
             }
     except Exception as e:
