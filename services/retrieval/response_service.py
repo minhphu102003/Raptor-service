@@ -4,6 +4,9 @@ import time
 from typing import Any, Dict, List, Optional, Union
 
 from fastapi.responses import StreamingResponse
+
+# Add Langfuse imports
+from langfuse import get_client, observe
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models.chat import MessageRole
@@ -24,6 +27,7 @@ class ResponseService:
         self.message_service = message_service
         self.prompt_service = prompt_service
 
+    @observe(name="answer_with_context", as_type="generation")
     async def answer_with_context(
         self,
         body: RetrieveBody,
@@ -38,6 +42,9 @@ class ResponseService:
     ) -> Union[StreamingResponse, Dict[str, Any]]:
         start_time = time.time()
         logger.info(f"Starting answer_with_context for query: {body.query}")
+
+        # Get the current Langfuse trace
+        langfuse = get_client()
 
         user_message = None
         if session_id:
@@ -100,6 +107,18 @@ class ResponseService:
             "max_tokens": tokens_to_use,
             "model": model_to_use,
         }
+
+        # Update trace with model information
+        langfuse.update_current_span(
+            input=body.query,
+            metadata={
+                "model": model_to_use,
+                "temperature": temp_to_use,
+                "max_tokens": tokens_to_use,
+                "top_k": body.top_k,
+                "mode": body.mode,
+            },
+        )
 
         if stream_to_use:
             logger.debug("Streaming response enabled")
