@@ -7,3 +7,6 @@ class EmbeddingService:
             self.vo.api_key = byok_voyage_key
         vecs = await self.vo.embed_queries([text])
         return vecs[0]
+
+    async def embed_queries(self, texts: list[str]):
+        return await self.vo.embed_queries(texts)

@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from services.providers.fpt_llm import FPTLLMClient
 from services.providers.voyage import VoyageEmbeddingClientAsync
@@ -14,7 +14,8 @@ logger = logging.getLogger("raptor.mcp.tools.rag.retrieve")
 async def rag_retrieve(
     dataset_id: str,
     query: str,
-    top_k: int = 5,
+    top_k: int = 8,
+    mode: Literal["collapsed", "traversal"] = "collapsed",
     levels_cap: Optional[int] = None,
     expand_k: Optional[int] = None,
     reranker: Optional[bool] = None,
@@ -27,7 +28,8 @@ async def rag_retrieve(
     Args:
         dataset_id: ID of the dataset to search
         query: Search query
-        top_k: Number of top results to return (default: 5)
+        top_k: Number of top results to return (default: 8)
+        mode: Retrieval mode - either "collapsed" or "traversal" (default: "collapsed")
         levels_cap: Maximum tree levels to traverse
         expand_k: Number of nodes to expand (for collapsed mode)
         reranker: Whether to use a reranker
@@ -41,7 +43,7 @@ async def rag_retrieve(
         logger.info(f"Retrieving documents from dataset {dataset_id} for query: {query}")
         # Log the actual values being passed to the function
         logger.info(
-            f"Function arguments - top_k: {top_k}, levels_cap: {levels_cap}, expand_k: {expand_k}, reranker: {reranker}, score_threshold: {score_threshold}"
+            f"Function arguments - top_k: {top_k}, mode: {mode}, levels_cap: {levels_cap}, expand_k: {expand_k}, reranker: {reranker}, score_threshold: {score_threshold}"
         )
 
         if container is None:
@@ -56,7 +58,7 @@ async def rag_retrieve(
         retrieve_body = RetrieveBody(
             dataset_id=dataset_id,
             query=query,
-            mode="collapsed" if expand_k is not None else "traversal",
+            mode=mode,
             top_k=top_k if top_k is not None else 5,
             expand_k=expand_k if expand_k is not None else 5,
             levels_cap=levels_cap if levels_cap is not None else 0,
