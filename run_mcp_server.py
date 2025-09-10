@@ -1,9 +1,3 @@
-#!/usr/bin/env python3
-"""
-Standalone MCP Server for RAPTOR Service
-This script runs an independent MCP server with pre-attached RAPTOR tools.
-"""
-
 import argparse
 import asyncio
 import logging

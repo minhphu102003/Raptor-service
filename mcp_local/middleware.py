@@ -1,7 +1,3 @@
-"""
-Middleware for the MCP server.
-"""
-
 import json
 import logging
 from typing import Any, Dict
