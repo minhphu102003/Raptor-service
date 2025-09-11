@@ -32,7 +32,7 @@ class LangChainChunker(ChunkFnProvider):
 
         self.size = chunk_size
         self.overlap = chunk_overlap
-        self.separators = separators or ["\n\n", "\n", " ", ""]
+        self.separators = separators or ["\n\n", "\n", ".", " ", ""]
         self.keep_separator = keep_separator
 
         self.edge_refine = edge_refine

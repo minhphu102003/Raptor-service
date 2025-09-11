@@ -14,6 +14,7 @@ if sys.platform == "win32":
 
 from app.config import settings
 from app.container import Container
+from app.langfuse_config import langfuse, verify_langfuse_connection  # Add Langfuse import
 from app.logging_config import setup_logging  # Import the logging setup
 from app.monitor_loop import AddLagHeaderMiddleware, LoopLagMonitor
 from routes.root import root_router
@@ -44,7 +45,13 @@ async def lifespan(app: FastAPI):
     app.state.loop_monitor = LoopLagMonitor(interval=0.1)
     asyncio.create_task(app.state.loop_monitor.run())
 
+    # Verify Langfuse connection on startup
+    verify_langfuse_connection()
+
     yield
+
+    # Flush Langfuse events on shutdown
+    langfuse.flush()
 
 
 setup_logging()  # Use the imported setup_logging function

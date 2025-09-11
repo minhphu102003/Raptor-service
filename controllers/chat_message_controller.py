@@ -4,6 +4,9 @@ import time
 from fastapi import HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 
+# Add Langfuse import
+from langfuse import get_client, observe
+
 from controllers.dataset_controller import DatasetController
 from db.models.chat import MessageRole
 from dtos.chat_dto import ChatMessageRequest, EnhancedChatMessageRequest
@@ -22,8 +25,12 @@ class ChatMessageController:
         self._chat = chat_service
         self._answer = answer_service
 
+    @observe(name="send_chat_message", as_type="generation")
     async def send_chat_message(self, body: ChatMessageRequest):
         """Send a message and get AI response with chat context."""
+        # Get the current Langfuse trace
+        langfuse = get_client()
+
         logger.info(f"Processing chat message: {body.query}")
         start_time = time.time()
 
@@ -68,6 +75,19 @@ class ChatMessageController:
                 byok_voyage_api_key=None,  # Default value
             )
 
+            # Add trace information
+            langfuse.update_current_trace(
+                user_id=body.session_id or "anonymous",
+                session_id=body.session_id or f"session_{int(time.time())}",
+                input=body.query,
+                metadata={
+                    "dataset_id": body.dataset_id,
+                    "mode": body.mode,
+                    "top_k": body.top_k,
+                    "model": body.answer_model,
+                },
+            )
+
             # Get response with context using the retrieve_body and additional parameters
             logger.debug("Calling answer_with_context")
             result = await self._answer.answer_with_context(
@@ -84,10 +104,26 @@ class ChatMessageController:
             processing_time = int((time.time() - start_time) * 1000)
             logger.info(f"Chat message processed in {processing_time}ms")
 
+            # Update trace with output
+            if isinstance(result, dict) and "answer" in result:
+                langfuse.update_current_span(
+                    output=result["answer"],
+                    metadata={
+                        "input_chars": len(body.query),
+                        "output_chars": len(result["answer"]),
+                        "total_chars": len(body.query) + len(result["answer"]),
+                        "model": body.answer_model or "default",
+                    },
+                )
+
             return result
 
+    @observe(name="send_enhanced_chat_message", as_type="generation")
     async def send_enhanced_chat_message(self, body: EnhancedChatMessageRequest):
         """Send a message and get AI response with enhanced context awareness."""
+        # Get the current Langfuse trace
+        langfuse = get_client()
+
         logger.info(f"Processing enhanced chat message: {body.query}")
         start_time = time.time()
 
@@ -130,6 +166,20 @@ class ChatMessageController:
                 use_reranker=False,  # Default value
                 reranker_model=None,  # Default value
                 byok_voyage_api_key=None,  # Default value
+            )
+
+            # Add trace information
+            langfuse.update_current_trace(
+                user_id=body.session_id or "anonymous",
+                session_id=body.session_id or f"session_{int(time.time())}",
+                input=body.query,
+                metadata={
+                    "dataset_id": body.dataset_id,
+                    "mode": body.mode,
+                    "top_k": body.top_k,
+                    "model": body.answer_model,
+                    "enhanced": True,
+                },
             )
 
             # Retrieve relevant passages using the full capabilities of RetrievalService
@@ -234,6 +284,17 @@ class ChatMessageController:
 
             total_processing_time = int((time.time() - start_time) * 1000)
             logger.info(f"Enhanced chat message processed in {total_processing_time}ms")
+
+            # Update trace with output
+            langfuse.update_current_span(
+                output=text,
+                metadata={
+                    "input_chars": len(body.query),
+                    "output_chars": len(text),
+                    "total_chars": len(body.query) + len(text),
+                    "model": body.answer_model or "default",
+                },
+            )
 
             return {
                 "answer": text,
