@@ -1,10 +1,11 @@
 import { Card, CardBody, Button, Popover, PopoverTrigger, PopoverContent } from '@heroui/react'
 import { Heading, Text, Flex } from '@radix-ui/themes'
 import { PaperPlaneIcon, ChatBubbleIcon, ClipboardIcon } from '@radix-ui/react-icons'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { FileUpload } from '../../molecules'
 import { ChatMessage } from '../../molecules/ChatMessage'
+import { ChatMessageSkeleton } from '../../atoms/ChatMessageSkeleton'
 import { useTextareaAutoResize } from '../../../hooks/useTextareaAutoResize'
 import type { FileUploadItem } from '../../molecules'
 import type { Message, ChatSession } from '../../../hooks/useChatState'
@@ -20,25 +21,25 @@ interface ChatAreaProps {
   messages: Message[]
   onSendMessage: (content: string, files?: FileUploadItem[]) => void
   isSendingMessage?: boolean
+  isLoading?: boolean
 }
 
-export const ChatArea = ({ className, selectedSession, messages, onSendMessage, isSendingMessage = false }: ChatAreaProps) => {
+export const ChatArea = ({ className, selectedSession, messages, onSendMessage, isSendingMessage = false, isLoading = false }: ChatAreaProps) => {
   const [inputValue, setInputValue] = useState('')
   const [selectedFiles, setSelectedFiles] = useState<FileUploadItem[]>([])
   const [isFileUploadOpen, setIsFileUploadOpen] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const textareaRef = useTextareaAutoResize(inputValue)
+  const { textareaRef } = useTextareaAutoResize(4) // Use the optimized hook
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
+  }, [])
 
   useEffect(() => {
-    console.log('ChatArea messages updated:', messages)
     scrollToBottom()
-  }, [messages])
+  }, [messages, scrollToBottom])
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = useCallback(() => {
     if (!inputValue.trim() && selectedFiles.length === 0) return
     if (!selectedSession) return
 
@@ -47,24 +48,47 @@ export const ChatArea = ({ className, selectedSession, messages, onSendMessage, 
 
     // Clear input and files immediately since user message is shown right away
     setInputValue('')
+    if (textareaRef.current) {
+      textareaRef.current.value = '' // Clear the textarea directly
+    }
     setSelectedFiles([])
     setIsFileUploadOpen(false)
-  }
+  }, [inputValue, onSendMessage, selectedFiles, selectedSession, textareaRef])
 
-  const handleFilesSelected = (files: FileUploadItem[]) => {
+  const handleFilesSelected = useCallback((files: FileUploadItem[]) => {
     setSelectedFiles(prev => [...prev, ...files])
-  }
+  }, [])
 
-  const handleRemoveFile = (fileId: string) => {
+  const handleRemoveFile = useCallback((fileId: string) => {
     setSelectedFiles(prev => prev.filter(file => file.id !== fileId))
-  }
+  }, [])
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSendMessage()
     }
-  }
+  }, [handleSendMessage])
+
+  // Optimize textarea change handler with React.memo-like behavior
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInputValue(e.target.value)
+  }, [])
+
+  // Memoize the filtered messages to prevent unnecessary re-renders
+  const displayableMessages = useMemo(() => {
+    return messages.filter(message => message.type !== 'system')
+  }, [messages])
+
+  // Memoize the file upload component to prevent unnecessary re-renders
+  const fileUploadComponent = useMemo(() => (
+    <FileUpload
+      onFilesSelected={handleFilesSelected}
+      selectedFiles={selectedFiles}
+      onRemoveFile={handleRemoveFile}
+      maxFiles={3}
+    />
+  ), [handleFilesSelected, selectedFiles, handleRemoveFile])
 
   return (
     <div className={`h-full ${className || ''}`}>
@@ -92,13 +116,23 @@ export const ChatArea = ({ className, selectedSession, messages, onSendMessage, 
               <div className="h-full flex items-center justify-center">
                 <div className="text-center">
                   <ChatBubbleIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <Text className="text-gray-500 text-lg font-medium mb-2">
+                  <Text className="text-gray-500 text-lg font-medium mb-2 block">
                     No Session Selected
                   </Text>
                   <Text className="text-gray-400 text-sm">
                     Create or select a chat session to start chatting
                   </Text>
                 </div>
+              </div>
+            ) : isLoading ? (
+              // Skeleton loading state with variable number of messages
+              <div className="space-y-4">
+                {Array.from({ length: Math.floor(Math.random() * 3) + 3 }).map((_, index) => (
+                  <ChatMessageSkeleton 
+                    key={index} 
+                    isUser={index % 2 === 1} // Alternate between user and assistant
+                  />
+                ))}
               </div>
             ) : messages.length === 0 ? (
               <div className="h-full flex items-center justify-center">
@@ -115,11 +149,9 @@ export const ChatArea = ({ className, selectedSession, messages, onSendMessage, 
             ) : (
               <div className="space-y-4">
                 <AnimatePresence>
-                  {messages
-                    .filter(message => message.type !== 'system')
-                    .map((message) => (
-                      <ChatMessage key={message.id} message={message as DisplayableMessage} />
-                    ))}
+                  {displayableMessages.map((message) => (
+                    <ChatMessage key={message.id} message={message as DisplayableMessage} />
+                  ))}
                 </AnimatePresence>
 
                 <div ref={messagesEndRef} />
@@ -132,12 +164,7 @@ export const ChatArea = ({ className, selectedSession, messages, onSendMessage, 
             {/* File Upload Section */}
             {selectedFiles.length > 0 && (
               <div className="mb-4">
-                <FileUpload
-                  onFilesSelected={handleFilesSelected}
-                  selectedFiles={selectedFiles}
-                  onRemoveFile={handleRemoveFile}
-                  maxFiles={3}
-                />
+                {fileUploadComponent}
               </div>
             )}
 
@@ -147,7 +174,7 @@ export const ChatArea = ({ className, selectedSession, messages, onSendMessage, 
                   ref={textareaRef}
                   placeholder={selectedSession ? "Ask me anything about your knowledge bases..." : "Select a session to start chatting"}
                   value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
+                  onChange={handleInputChange}
                   onKeyPress={handleKeyPress}
                   className="w-full p-3 border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   disabled={isSendingMessage || !selectedSession}
@@ -171,12 +198,7 @@ export const ChatArea = ({ className, selectedSession, messages, onSendMessage, 
                 <PopoverContent className="w-80">
                   <div className="p-4">
                     <Text className="text-sm font-medium mb-3">Upload Files</Text>
-                    <FileUpload
-                      onFilesSelected={handleFilesSelected}
-                      selectedFiles={selectedFiles}
-                      onRemoveFile={handleRemoveFile}
-                      maxFiles={3}
-                    />
+                    {fileUploadComponent}
                   </div>
                 </PopoverContent>
               </Popover>
