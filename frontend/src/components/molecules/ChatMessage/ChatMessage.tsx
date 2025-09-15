@@ -3,6 +3,7 @@ import { Text } from '@radix-ui/themes';
 import { motion } from 'framer-motion';
 import { TypingIndicator } from '../../atoms/TypingIndicator';
 import { MessageContent } from '../../atoms/MessageContent';
+import { useState, memo } from 'react';
 
 interface ChatMessageProps {
   message: {
@@ -20,19 +21,10 @@ interface ChatMessageProps {
   };
 }
 
-export const ChatMessage = ({ message }: ChatMessageProps) => {
+export const ChatMessage = memo(({ message }: ChatMessageProps) => {
   const isUser = message.type === 'user';
   const isStreaming = message.content === 'typing' || (message.type === 'assistant' && message.content === '');
-  
-  // Debug logging to see what's being passed
-  console.log('ChatMessage props:', { 
-    messageId: message.id, 
-    content: message.content, 
-    contextPassages: message.contextPassages,
-    contextPassagesLength: message.contextPassages?.length,
-    type: message.type,
-    isStreaming
-  });
+  const [showCopyButton, setShowCopyButton] = useState(false);
 
   return (
     <motion.div
@@ -52,7 +44,9 @@ export const ChatMessage = ({ message }: ChatMessageProps) => {
       )}
 
       <div
-        className={`max-w-[80%] p-4 rounded-lg ${
+        onMouseEnter={() => setShowCopyButton(true)}
+        onMouseLeave={() => setShowCopyButton(false)}
+        className={`max-w-[80%] p-4 rounded-lg relative ${
           isUser
             ? 'bg-indigo-600 text-white'
             : 'bg-gray-100 text-gray-900'
@@ -62,7 +56,7 @@ export const ChatMessage = ({ message }: ChatMessageProps) => {
           <TypingIndicator />
         ) : (
           <>
-            <MessageContent content={message.content} isUser={isUser} />
+            <MessageContent content={message.content} isUser={isUser} showCopyButton={showCopyButton} />
             
             {message.contextPassages && message.contextPassages.length > 0 && (
               <div className="mt-2 pt-2 border-t border-gray-200">
@@ -93,4 +87,7 @@ export const ChatMessage = ({ message }: ChatMessageProps) => {
       )}
     </motion.div>
   );
-};
+});
+
+// Add display name for debugging
+ChatMessage.displayName = 'ChatMessage';

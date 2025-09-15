@@ -5,7 +5,7 @@ import { useChatState, type ChatSession } from '../../../hooks/useChatState'
 import type { FileUploadItem } from '../../molecules'
 import { motion } from 'framer-motion'
 import type { Assistant as ServiceAssistant } from '../../../services/assistantService'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 
 interface ChatPageTemplateProps {
   className?: string
@@ -64,7 +64,7 @@ export const ChatPageTemplate = ({ className }: ChatPageTemplateProps) => {
   }, [selectedSession, previousSelectedSession])
 
   // Animation variants
-  const containerVariants = {
+  const containerVariants = useMemo(() => ({
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
@@ -73,9 +73,9 @@ export const ChatPageTemplate = ({ className }: ChatPageTemplateProps) => {
         staggerChildren: 0.2
       }
     }
-  }
+  }), [])
 
-  const sectionVariants = {
+  const sectionVariants = useMemo(() => ({
     hidden: { opacity: 0, y: 30 },
     visible: {
       opacity: 1,
@@ -85,9 +85,9 @@ export const ChatPageTemplate = ({ className }: ChatPageTemplateProps) => {
         ease: "easeOut" as const
       }
     }
-  }
+  }), [])
 
-  const headerVariants = {
+  const headerVariants = useMemo(() => ({
     hidden: { opacity: 0, y: -20 },
     visible: {
       opacity: 1,
@@ -97,17 +97,17 @@ export const ChatPageTemplate = ({ className }: ChatPageTemplateProps) => {
         ease: "easeOut" as const
       }
     }
-  }
+  }), [])
 
   // Handle assistant selection from AssistantCreation
-  const handleAssistantSelect = (assistant: ServiceAssistant) => {
+  const handleAssistantSelect = useCallback((assistant: ServiceAssistant) => {
     const convertedAssistant = convertServiceAssistantToChatAssistant(assistant)
     selectAssistant(convertedAssistant)
     // Sessions will be loaded automatically by the useChatState hook based on the selected assistant
-  }
+  }, [selectAssistant])
 
   // Handle session selection with loading effect
-  const handleSelectSession = (session: ChatSession | null) => {
+  const handleSelectSession = useCallback((session: ChatSession | null) => {
     setIsSwitchingSession(true)
     selectSession(session)
     // Simulate loading time for better UX
@@ -115,15 +115,15 @@ export const ChatPageTemplate = ({ className }: ChatPageTemplateProps) => {
       setIsSwitchingSession(false)
       setPreviousSelectedSession(session?.id || null)
     }, 300)
-  }
+  }, [selectSession])
 
   // Wrapper for createNewSession to match expected signature
-  const handleCreateNewSession = async (assistantId: string, sessionName?: string) => {
+  const handleCreateNewSession = useCallback(async (assistantId: string, sessionName?: string) => {
     await createNewSession(assistantId, sessionName)
-  }
+  }, [createNewSession])
 
   // Handle message sending from ChatArea
-  const handleSendMessage = async (content: string, files?: FileUploadItem[]) => {
+  const handleSendMessage = useCallback(async (content: string, files?: FileUploadItem[]) => {
     if (!content.trim()) return;
     
     if (!selectedSession || !selectedAssistant) {
@@ -177,7 +177,37 @@ export const ChatPageTemplate = ({ className }: ChatPageTemplateProps) => {
       console.error('Failed to send message:', error)
       // Error message is now handled in the hook, so we don't need to add it here
     }
-  }
+  }, [selectedSession, selectedAssistant, createNewSession, addMessage, sendEnhancedMessageToAssistant, sendMessageToAssistant])
+  
+  // Memoize the KnowledgeHeader component
+  const knowledgeHeader = useMemo(() => <KnowledgeHeader />, [])
+  
+  // Memoize the AssistantCreation component
+  const assistantCreation = useMemo(() => (
+    <AssistantCreation onAssistantSelect={handleAssistantSelect} />
+  ), [handleAssistantSelect])
+  
+  // Memoize the ChartSection component
+  const chartSection = useMemo(() => (
+    <ChartSection
+      selectedAssistant={selectedAssistant}
+      sessions={sessions}
+      selectedSession={selectedSession}
+      loadingSessions={loadingSessions}
+      onSelectSession={handleSelectSession}
+      onCreateNewSession={handleCreateNewSession}
+    />
+  ), [selectedAssistant, sessions, selectedSession, loadingSessions, handleSelectSession, handleCreateNewSession])
+  
+  // Memoize the ChatArea component
+  const chatArea = useMemo(() => (
+    <ChatArea
+      selectedSession={selectedSession}
+      messages={messages}
+      onSendMessage={handleSendMessage}
+      isLoading={isSwitchingSession || loadingMessages}
+    />
+  ), [selectedSession, messages, handleSendMessage, isSwitchingSession, loadingMessages])
   
   return (
     <div className={`min-h-screen bg-gray-50 ${className || ''}`}>
@@ -187,7 +217,7 @@ export const ChatPageTemplate = ({ className }: ChatPageTemplateProps) => {
         initial="hidden"
         animate="visible"
       >
-        <KnowledgeHeader />
+        {knowledgeHeader}
       </motion.div>
 
       {/* Main Chat Interface - 3 Column Layout */}
@@ -205,7 +235,7 @@ export const ChatPageTemplate = ({ className }: ChatPageTemplateProps) => {
             whileHover={{ scale: 1.01 }}
             transition={{ duration: 0.2 }}
           >
-            <AssistantCreation onAssistantSelect={handleAssistantSelect} />
+            {assistantCreation}
           </motion.div>
 
           {/* Middle Section - Chart (25% width) */}
@@ -215,14 +245,7 @@ export const ChatPageTemplate = ({ className }: ChatPageTemplateProps) => {
             whileHover={{ scale: 1.01 }}
             transition={{ duration: 0.2 }}
           >
-            <ChartSection
-              selectedAssistant={selectedAssistant}
-              sessions={sessions}
-              selectedSession={selectedSession}
-              loadingSessions={loadingSessions}
-              onSelectSession={handleSelectSession}
-              onCreateNewSession={handleCreateNewSession}
-            />
+            {chartSection}
           </motion.div>
 
           {/* Right Section - ChatArea (50% width - 2x wider) */}
@@ -232,23 +255,7 @@ export const ChatPageTemplate = ({ className }: ChatPageTemplateProps) => {
             whileHover={{ scale: 1.005 }}
             transition={{ duration: 0.2 }}
           >
-            {isSwitchingSession || loadingMessages ? (
-              // Loading state when switching sessions or loading messages
-              <div className="h-full flex items-center justify-center">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-                  <p className="text-gray-600">
-                    {isSwitchingSession ? 'Loading conversation...' : 'Loading messages...'}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <ChatArea
-                selectedSession={selectedSession}
-                messages={messages}
-                onSendMessage={handleSendMessage}
-              />
-            )}
+            {chatArea}
           </motion.div>
         </Flex>
       </motion.div>

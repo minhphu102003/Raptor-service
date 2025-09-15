@@ -113,10 +113,10 @@ export const ChartSection = ({
                   ) : sessions.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-32 text-center">
                       <ChatBubbleIcon className="w-12 h-12 text-gray-300 mb-2" />
-                      <Text className="text-gray-500 text-sm">
+                      <Text className="text-gray-500 text-sm block">
                         No chat sessions yet
                       </Text>
-                      <Text className="text-gray-400 text-xs">
+                      <Text className="text-gray-400 text-xs block">
                         Create a new session to get started
                       </Text>
                     </div>
@@ -166,7 +166,7 @@ export const ChartSection = ({
               <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
                   <ChatBubbleIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <Text className="text-gray-500 text-lg font-medium mb-2">
+                  <Text className="text-gray-500 text-lg font-medium mb-2 block">
                     No Assistant Selected
                   </Text>
                   <Text className="text-gray-400 text-sm">

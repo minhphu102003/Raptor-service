@@ -1,19 +1,42 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { motion } from 'framer-motion';
+import { useCopyToClipboard } from '../../../hooks';
+import { ClipboardIcon, CheckIcon } from '@radix-ui/react-icons';
 
 interface MessageContentProps {
   content: string;
   isUser: boolean;
+  showCopyButton: boolean;
 }
 
-export const MessageContent = ({ content, isUser }: MessageContentProps) => {
+export const MessageContent = ({ content, isUser, showCopyButton }: MessageContentProps) => {
+  const { isCopied, copyToClipboard } = useCopyToClipboard();
+
+  const handleCopy = () => {
+    copyToClipboard(content);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
+      className="relative"
     >
+      {showCopyButton && (
+        <button
+          onClick={handleCopy}
+          className={`absolute top-[-12px] ${isUser ? '-left-2' : '-right-2'} m-1 p-1 rounded transition-all duration-200 bg-gray-400 shadow-md hover:bg-gray-500`}
+          aria-label="Copy message"
+        >
+          {isCopied ? (
+            <CheckIcon className="w-4 h-4 text-green-400" />
+          ) : (
+            <ClipboardIcon className="w-4 h-4 text-white" />
+          )}
+        </button>
+      )}
       <div 
         className={`text-sm ${
           isUser ? 'text-white' : 'text-gray-900'
